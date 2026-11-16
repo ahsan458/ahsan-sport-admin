@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ckb" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111111">
+<title>AHSAN SPORT | Admin Dashboard</title>
+<style>
+:root{--bg:#f4f4f4;--panel:#111;--card:#242424;--gold:#f2c735;--muted:#a7a7a7;--line:#343434;--white:#fff;--green:#2f9b58}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif;color:#161616}
+button,input,select{font:inherit}button{cursor:pointer}
+.shell{max-width:1440px;margin:auto;min-height:100vh;display:grid;grid-template-columns:260px 1fr;background:#f5f5f5}
+.sidebar{background:#101010;color:#fff;padding:24px 16px;min-height:100vh;position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:12px;padding:8px 8px 24px;border-bottom:1px solid #383838}
+.brand-mark{width:46px;height:46px;border-radius:14px;background:var(--gold);display:grid;place-items:center;color:#111;font-size:24px;font-weight:900}
+.brand b{display:block;color:var(--gold);font-size:19px;letter-spacing:.5px}.brand small{color:#aaa}
+.nav{padding-top:18px;display:grid;gap:7px}.nav button{border:0;background:transparent;color:#c8c8c8;text-align:right;padding:13px 14px;border-radius:12px;display:flex;gap:12px;align-items:center}
+.nav button.active,.nav button:hover{background:#292929;color:var(--gold)}.nav .ico{width:22px;text-align:center;font-size:18px}
+.sidebar-foot{position:absolute;bottom:20px;right:16px;left:16px;border-top:1px solid #383838;padding:16px 8px;color:#aaa;font-size:12px}
+main{min-width:0;padding:28px 32px 50px}.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:26px}
+.hello h1{margin:0 0 5px;font-size:25px}.hello p{margin:0;color:#777}
+.top-actions{display:flex;align-items:center;gap:10px}.online{background:#e5f5e9;color:#258348;padding:8px 13px;border-radius:30px;font-size:13px;font-weight:700}
+.avatar{width:42px;height:42px;border-radius:50%;background:#171717;color:var(--gold);display:grid;place-items:center;font-weight:800}
+.page{display:none}.page.active{display:block}
+.hero{background:#111;color:#fff;border-radius:26px;padding:28px;box-shadow:0 12px 35px #00000012}
+.hero-head{display:flex;justify-content:space-between;align-items:center;padding-bottom:22px;border-bottom:1px solid #444;gap:12px}
+.hero-brand{display:flex;align-items:center;gap:13px}.shoe-icon{width:56px;height:56px;background:var(--gold);border-radius:16px;color:#111;display:grid;place-items:center;font-size:27px}
+.hero-brand h2{color:var(--gold);font-size:27px;margin:0}.hero-brand p{color:#aaa;margin:4px 0 0}
+.welcome{text-align:right;margin:25px 0}.welcome h2{font-size:26px;margin:0 0 8px}.welcome p{color:#aaa;margin:0}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.stat{background:#252525;border-radius:18px;padding:18px;min-height:142px}.stat .sym{color:var(--gold);font-size:23px}.stat strong{display:block;font-size:34px;margin:8px 0}.stat span{color:#aaa}
+.panel{background:#252525;border-radius:18px;padding:22px;margin-top:18px}.panel h3{margin:0 0 15px;font-size:20px}
+.quick-links{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.quick-links button{background:#303030;border:1px solid #444;color:#fff;padding:15px;border-radius:12px;text-align:right;display:flex;justify-content:space-between;align-items:center}.quick-links button:hover{border-color:var(--gold)}
+.footer-note{text-align:center;color:#888;margin:22px 0 0;font-size:13px}
+.section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}.section-head h2{margin:0;font-size:25px}
+.btn{border:0;border-radius:11px;padding:11px 16px;background:var(--gold);color:#111;font-weight:700}.btn.secondary{background:#222;color:#fff}.btn.green{background:var(--green);color:#fff}
+.white-card{background:#fff;border:1px solid #e5e5e5;border-radius:16px;padding:18px;margin-bottom:14px}
+.table-wrap{overflow:auto;background:#fff;border:1px solid #e5e5e5;border-radius:15px}
+table{border-collapse:collapse;width:100%;min-width:600px}th,td{text-align:right;padding:14px 16px;border-bottom:1px solid #eee}th{background:#fafafa;color:#777;font-size:13px}
+.tag{display:inline-block;padding:5px 10px;border-radius:30px;background:#e7f5eb;color:#21834a;font-size:12px}
+.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.field label{display:block;margin-bottom:6px;color:#666;font-size:13px}.field input,.field select{width:100%;border:1px solid #ddd;border-radius:10px;padding:12px;background:#fff}
+.note{color:#777;font-size:13px;line-height:1.8}.mobile-menu{display:none;border:0;background:#111;color:var(--gold);border-radius:10px;padding:10px 13px}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#171717;color:#fff;padding:12px 18px;border-radius:30px;display:none;z-index:9;box-shadow:0 8px 24px #0003}
+@media(max-width:1050px){.stats{grid-template-columns:repeat(2,1fr)}.shell{grid-template-columns:220px 1fr}main{padding:24px}}
+@media(max-width:720px){.shell{display:block}.sidebar{position:fixed;z-index:8;right:-280px;width:260px;transition:right .25s;box-shadow:0 0 0 999px #0000}.sidebar.open{right:0;box-shadow:0 0 0 999px #0007}.sidebar-foot{position:static;margin-top:30px}.mobile-menu{display:block}.topbar{align-items:flex-start}.hello h1{font-size:20px}.hello p{font-size:13px}.top-actions .online{display:none}main{padding:18px 14px 35px}.hero{padding:18px;border-radius:20px}.hero-brand h2{font-size:20px}.hero-brand p{font-size:12px}.shoe-icon{width:46px;height:46px}.welcome h2{font-size:21px}.welcome p{font-size:13px}.stats{gap:9px}.stat{padding:13px;min-height:120px}.stat strong{font-size:29px}.stat span{font-size:13px}.panel{padding:15px}.quick-links{grid-template-columns:1fr}.section-head h2{font-size:21px}.form-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar" id="sidebar">
+  <div class="brand"><div class="brand-mark">A</div><div><b>AHSAN SPORT</b><small>ADMIN DASHBOARD</small></div></div>
+  <nav class="nav" id="nav">
+    <button class="active" data-page="dashboard"><span class="ico">▦</span> داشبۆرد</button>
+    <button data-page="sales"><span class="ico">🛒</span> فرۆشتن و داواکاری</button>
+    <button data-page="inventory"><span class="ico">⬡</span> کۆگای پێڵاو</button>
+    <button data-page="products"><span class="ico">◈</span> بەرهەمەکان</button>
+    <button data-page="staff"><span class="ico">♙</span> ئەدمین و کارمەندان</button>
+    <button data-page="reports"><span class="ico">▥</span> ڕاپۆرت و قازانج</button>
+    <button data-page="expenses"><span class="ico">↗</span> خەرجییەکان</button>
+    <button data-page="settings"><span class="ico">⚙</span> ڕێکخستن</button>
+  </nav>
+  <div class="sidebar-foot">AHSAN SPORT · Connected Starter<br>بەشەکانی داشبۆرد هێشتا پێویستیان بە پەیوەستکردنی داتا هەیە</div>
+</aside>
+<main>
+  <section class="white-card" id="authPanel" style="margin-bottom:18px">
+    <h3>چوونەژوورەوەی AHSAN SPORT</h3>
+    <p class="note">بە ئیمەیڵ و وشەی نهێنی بچۆ ژوورەوە. تۆمارکردنی ئەندامی نوێ کراوەیە؛ بەڵام دەسەڵاتی خاوەن تەنها لەلایەن خاوەنەوە دەدرێت.</p>
+    <div class="form-grid">
+      <div class="field"><label>ئیمەیڵ</label><input id="authEmail" type="email" autocomplete="username" placeholder="name@example.com"></div>
+      <div class="field"><label>وشەی نهێنی</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px"><button class="btn" id="loginBtn">چوونەژوورەوە</button><button class="btn secondary" id="signupBtn">دروستکردنی هەژمار</button></div>
+    <p class="note" id="authMessage" aria-live="polite"></p>
+  </section>
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="mobile-menu" id="menuBtn">☰</button>
+      <div class="hello"><h1 id="pageTitle">داشبۆردی سەرەکی</h1><p>بەخێربێیت بۆ بەڕێوەبردنی AHSAN SPORT</p></div>
+    </div>
+    <div class="top-actions"><span class="online" id="connectionStatus" style="background:#fff3cd;color:#8a6500">● چاوەڕوانی پەیوەندی</span><button class="btn secondary" id="logoutBtn" style="display:none">چوونەدەرەوە</button><div class="avatar">A</div></div>
+  </header>
+
+  <section class="page active" id="dashboard">
+    <div class="hero">
+      <div class="hero-head"><div class="hero-brand"><div class="shoe-icon">♧</div><div><h2>AHSAN SPORT</h2><p>ADMIN DASHBOARD</p></div></div><span class="online">● Online</span></div>
+      <div class="welcome"><h2>بەخێربێیت، بەڕێوەبەر 👋</h2><p>کۆنتڕۆڵی تەواوی فرۆشگا و کۆگاکەت لە یەک شوێن</p></div>
+      <div class="stats">
+        <div class="stat"><div class="sym">▣</div><strong>0</strong><span>کۆی فرۆشتن</span></div>
+        <div class="stat"><div class="sym">▤</div><strong>0</strong><span>داواکارییەکان</span></div>
+        <div class="stat"><div class="sym">⬡</div><strong>0</strong><span>بەرهەمەکان</span></div>
+        <div class="stat"><div class="sym">♙</div><strong>—</strong><span>ئەدمین و کارمەندان</span></div>
+      </div>
+      <div class="panel"><h3>بەشەکانی سیستەم</h3><div class="quick-links">
+        <button data-goto="sales">فرۆشتن <b>🛒</b></button><button data-goto="inventory">کۆگای پێڵاو <b>⬡</b></button>
+        <button data-goto="staff">ئەدمینەکان <b>♙</b></button><button data-goto="reports">ڕاپۆرت و قازانج <b>▥</b></button>
+        <button data-goto="products">بەرهەمەکان <b>◈</b></button><button data-goto="expenses">خەرجییەکان <b>↗</b></button>
+      </div></div>
+      <div class="footer-note">پێشکەشی دیزاینی داشبۆرد — AHSAN SPORT</div>
+    </div>
+  </section>
+
+  <section class="page" id="sales">
+    <div class="section-head"><h2>فرۆشتن و داواکاری</h2><button class="btn" onclick="toast('فۆڕمی تۆمارکردنی فرۆشتن لە قۆناغی پەیوەستکردنی داتابەیس زیاد دەکرێت')">+ فرۆشتنی نوێ</button></div>
+    <div class="white-card"><h3>کۆی داواکارییەکان</h3><p class="note">لێرەدا داواکارییەکان، ناوی کڕیار، بڕی پارە، دۆخی پارەدان و گەیاندن دەردەکەون.</p></div>
+    <div class="table-wrap"><table><thead><tr><th>ژمارە</th><th>کڕیار</th><th>بڕی پارە</th><th>دۆخ</th><th>بەروار</th></tr></thead><tbody><tr><td colspan="5">هیچ داواکارییەکی تۆمارکراو نییە — نموونەی بەتاڵ</td></tr></tbody></table></div>
+  </section>
+  <section class="page" id="inventory">
+    <div class="section-head"><h2>کۆگای پێڵاو</h2><button class="btn" onclick="toast('زیادکردنی کاڵا دوای پەیوەستکردنی داتابەیس کارا دەبێت')">+ زیادکردنی کاڵا</button></div>
+    <div class="white-card"><h3>بەڕێوەبردنی کۆگا</h3><p class="note">ژمارەی دانە، قەبارە، ڕەنگ، نرخی کڕین و فرۆشتن و ئاگادارکردنەوەی کەمبوونی کۆگا.</p></div>
+    <div class="table-wrap"><table><thead><tr><th>کاڵا</th><th>قەبارە</th><th>ڕەنگ</th><th>دانە</th><th>دۆخ</th></tr></thead><tbody><tr><td colspan="5">هێشتا کاڵایەک زیاد نەکراوە</td></tr></tbody></table></div>
+  </section>
+  <section class="page" id="products">
+    <div class="section-head"><h2>بەرهەمەکان</h2><button class="btn" onclick="toast('فۆڕمی بەرهەمی نوێ لە قۆناغی داهاتوودا پەیوەست دەکرێت')">+ بەرهەمی نوێ</button></div>
+    <div class="white-card"><p class="note">وێنەی پێڵاو، ناوی بەرهەم، براند، نرخ، قەبارە و ڕەنگ لێرە بەڕێوە دەبرێن.</p></div>
+  </section>
+  <section class="page" id="staff">
+    <div class="section-head"><h2>ئەدمین و کارمەندان</h2><button class="btn" onclick="toast('تەنها خاوەنی سیستەم دەتوانێت ئەدمین زیاد بکات')">+ زیادکردنی ئەدمین</button></div>
+    <div class="white-card"><h3>سیستەمی دەسەڵات</h3><p class="note">خاوەن: دەسەڵاتی تەواو. ئەدمین: دەسەڵاتی دیاریکراو بە پێی پێویستی کار. ژمارەی ئەدمینەکان بە ٥ سنووردار ناکرێت.</p></div>
+  </section>
+  <section class="page" id="reports">
+    <div class="section-head"><h2>ڕاپۆرت و قازانج</h2></div>
+    <div class="white-card"><h3>ڕاپۆرتی دارایی</h3><p class="note">فرۆشتنی ڕۆژانە و مانگانە، خەرجی، قازانجی ڕاستەقینە و هەڵسەنگاندنی بەرهەمە فرۆشراوەکان. ژمارەکان تەنها دوای پەیوەستکردنی داتابەیس پیشان دەدرێن.</p></div>
+  </section>
+  <section class="page" id="expenses">
+    <div class="section-head"><h2>خەرجییەکان</h2><button class="btn" onclick="toast('تۆمارکردنی خەرجی لە قۆناغی داهاتوودا کارا دەبێت')">+ خەرجی نوێ</button></div>
+    <div class="white-card"><p class="note">کرێ، گەیاندن، مووچە، کڕینی کاڵا و هەموو خەرجییەکانی فرۆشگا.</p></div>
+  </section>
+  <section class="page" id="settings">
+    <div class="section-head"><h2>ڕێکخستن</h2></div>
+    <div class="white-card"><h3>ڕێکخستنی سیستەم</h3><div class="form-grid">
+      <div class="field"><label>ناوی فرۆشگا</label><input value="AHSAN SPORT" readonly></div>
+      <div class="field"><label>زمان</label><select><option>کوردی (سۆرانی)</option></select></div>
+      <div class="field"><label>ڕووکار</label><select><option>ڕەش و زێڕینی</option></select></div>
+      <div class="field"><label>پلاتفۆرم</label><input value="iPhone · Android · Tablet · Desktop" readonly></div>
+    </div><p class="note">ئەم پێشبینینە بۆ دیزاینە. هەژمار، چوونەژوورەوە و پاراستن دوای پەیوەستکردنی Supabase تەواو دەکرێن.</p></div>
+  </section>
+</main>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const titles={dashboard:'داشبۆردی سەرەکی',sales:'فرۆشتن و داواکاری',inventory:'کۆگای پێڵاو',products:'بەرهەمەکان',staff:'ئەدمین و کارمەندان',reports:'ڕاپۆرت و قازانج',expenses:'خەرجییەکان',settings:'ڕێکخستن'};
+function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));document.getElementById('pageTitle').textContent=titles[id]||'AHSAN SPORT';document.getElementById('sidebar').classList.remove('open');window.scrollTo(0,0)}
+document.getElementById('nav').addEventListener('click',e=>{const b=e.target.closest('button[data-page]');if(b)showPage(b.dataset.page)});
+document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.goto)));
+document.getElementById('menuBtn').addEventListener('click',()=>document.getElementById('sidebar').classList.toggle('open'));
+let toastTimer;function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.style.display='none',2800)}
+</script>
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './supabase-config.js';
+const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true }
+});
+const statusEl = document.getElementById('connectionStatus');
+const authPanel = document.getElementById('authPanel');
+const authMessage = document.getElementById('authMessage');
+const logoutBtn = document.getElementById('logoutBtn');
+function message(text, ok=false){ authMessage.textContent=text; authMessage.style.color=ok?'#21834a':'#a33'; }
+async function refreshSession(){
+  const { data:{ session }, error } = await supabase.auth.getSession();
+  if(error){ statusEl.textContent='● کێشەی پەیوەندی'; message(error.message); return; }
+  if(session){
+    statusEl.textContent='● چوویتە ژوورەوە'; statusEl.style.background='#e5f5e9'; statusEl.style.color='#258348';
+    authPanel.querySelector('h3').textContent='بەخێربێیت بۆ AHSAN SPORT';
+    message('هەژمارەکەت بە سەرکەوتوویی پەیوەست بوو. بەشەکانی داشبۆرد هێشتا پێویستیان بە پەیوەستکردنی داتا هەیە.', true);
+    logoutBtn.style.display='inline-block';
+    const { data: profile, error: profileError } = await supabase.from('profiles').select('full_name, role, active').eq('id',session.user.id).maybeSingle();
+    if(!profileError && profile){
+      if(profile.active === false){ message('ئەم هەژمارە ناچالاکە. تکایە پەیوەندی بە خاوەنی سیستەمەوە بکە.'); }
+      else { authPanel.querySelector('h3').textContent='بەخێربێیت، '+(profile.full_name || 'بەکارهێنەر'); }
+    }
+  } else {
+    statusEl.textContent='● پێویستە بچیتە ژوورەوە'; statusEl.style.background='#fff3cd'; statusEl.style.color='#8a6500';
+    logoutBtn.style.display='none';
+  }
+}
+document.getElementById('loginBtn').addEventListener('click', async()=>{
+  const email=document.getElementById('authEmail').value.trim();
+  const password=document.getElementById('authPassword').value;
+  if(!email || !password){ message('ئیمەیڵ و وشەی نهێنی پڕ بکەرەوە.'); return; }
+  message('تکایە چاوەڕێ بکە...');
+  const {error}=await supabase.auth.signInWithPassword({email,password});
+  if(error){message(error.message);return;} message('چوونەژوورەوە سەرکەوتوو بوو.',true); await refreshSession();
+});
+document.getElementById('signupBtn').addEventListener('click', async()=>{
+  const email=document.getElementById('authEmail').value.trim();
+  const password=document.getElementById('authPassword').value;
+  if(!email || password.length<6){ message('ئیمەیڵ بنووسە و وشەی نهێنییەکە لانیکەم ٦ پیت بێت.'); return; }
+  message('هەژمارەکە دروست دەکرێت...');
+  const {data,error}=await supabase.auth.signUp({email,password});
+  if(error){message(error.message);return;}
+  if(data.session){message('هەژمار دروست بوو و چوویتە ژوورەوە.',true); await refreshSession();}
+  else {message('داواکاری تۆمارکردن نێردرا. ئیمەیڵەکەت بپشکنە بۆ پشتڕاستکردنەوە.',true);}
+});
+logoutBtn.addEventListener('click',async()=>{const {error}=await supabase.auth.signOut();if(error){message(error.message);return;}message('چوویتە دەرەوە.',true);await refreshSession();});
+supabase.auth.onAuthStateChange(()=>{refreshSession();});
+refreshSession();
+</script>
+</body></html>
