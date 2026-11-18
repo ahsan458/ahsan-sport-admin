@@ -65,6 +65,7 @@ table{border-collapse:collapse;width:100%;min-width:600px}th,td{text-align:right
     <h3>چوونەژوورەوەی AHSAN SPORT</h3>
     <p class="note">بە ئیمەیڵ و وشەی نهێنی بچۆ ژوورەوە. تۆمارکردنی ئەندامی نوێ کراوەیە؛ بەڵام دەسەڵاتی خاوەن تەنها لەلایەن خاوەنەوە دەدرێت.</p>
     <div class="form-grid">
+      <div class="field"><label>ناوی تەواو</label><input id="authFullName" type="text" autocomplete="name" placeholder="ناوی کارمەند" maxlength="80"></div>
       <div class="field"><label>ئیمەیڵ</label><input id="authEmail" type="email" autocomplete="username" placeholder="name@example.com"></div>
       <div class="field"><label>وشەی نهێنی</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="••••••••"></div>
     </div>
@@ -331,14 +332,15 @@ document.getElementById('loginBtn').addEventListener('click', async()=>{
   if(error){message(error.message);return;} message('چوونەژوورەوە سەرکەوتوو بوو.',true); await refreshSession();
 });
 document.getElementById('signupBtn').addEventListener('click', async()=>{
+  const fullName=document.getElementById('authFullName').value.trim();
   const email=document.getElementById('authEmail').value.trim();
   const password=document.getElementById('authPassword').value;
-  if(!email || password.length<6){ message('ئیمەیڵ بنووسە و وشەی نهێنییەکە لانیکەم ٦ پیت بێت.'); return; }
+  if(!fullName || !email || password.length<6){ message('ناوی تەواو، ئیمەیڵ و وشەی نهێنییەکی لانیکەم ٦ پیتی پڕ بکەرەوە.'); return; }
   message('هەژمارەکە دروست دەکرێت...');
-  const {data,error}=await supabase.auth.signUp({email,password});
+  const {data,error}=await supabase.auth.signUp({email,password,options:{data:{full_name:fullName}}});
   if(error){message(error.message);return;}
-  if(data.session){message('هەژمار دروست بوو و چوویتە ژوورەوە.',true); await refreshSession();}
-  else {message('داواکاری تۆمارکردن نێردرا. ئیمەیڵەکەت بپشکنە بۆ پشتڕاستکردنەوە.',true);}
+  if(data.session){message('هەژمار دروست بوو. پڕۆفایلی کارمەند بە شێوەی ئۆتۆماتیکی دروست دەبێت.',true); await refreshSession();}
+  else {message('داواکاری تۆمارکردن نێردرا. ئیمەیڵەکەت بپشکنە بۆ پشتڕاستکردنەوە؛ پاشان دەتوانیت بچیتە ژوورەوە.',true);}
 });
 
 const addStockPanel = document.getElementById('addStockPanel');
