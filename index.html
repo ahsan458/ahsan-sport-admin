@@ -249,9 +249,11 @@ async function loadDashboardData(role){
   cachedProducts = productsResult.data || [];
   cachedVariants = variantsResult.data || [];
   const orderData=ordersResult.data||[];
+  // Cancelled/rejected orders stay in history but are excluded from sales and order totals for both owner and staff.
+  const activeOrders=orderData.filter(o=>o.status!=='cancelled');
   const fmt=n=>Number(n||0).toLocaleString('en-US')+' د.ع';
-  document.getElementById('statSales').textContent=orderData.reduce((a,o)=>a+Number(o.sale_price_iqd||0)*Number(o.quantity||1),0).toLocaleString('en-US');
-  document.getElementById('statOrders').textContent=ordersResult.count??orderData.length;
+  document.getElementById('statSales').textContent=activeOrders.reduce((a,o)=>a+Number(o.sale_price_iqd||0)*Number(o.quantity||1),0).toLocaleString('en-US');
+  document.getElementById('statOrders').textContent=activeOrders.length;
   document.getElementById('statProducts').textContent=cachedProducts.length.toLocaleString('en-US');
   if(role==='owner'){
     const {data:staffList,error:staffError}=await supabase.from('profiles').select('id,full_name,role,active').order('full_name');
@@ -270,10 +272,10 @@ async function loadDashboardData(role){
     const ids=[...new Set(orderData.map(o=>o.staff_id).filter(Boolean))];
     if(ids.length){const {data:staffProfiles}=await supabase.from('profiles').select('id,full_name').in('id',ids);(staffProfiles||[]).forEach(p=>staffNames.set(p.id,p.full_name||'کارمەند'));}
   }
-  if(orderRows) orderRows.innerHTML=ordersResult.error?'<tr><td colspan="7">نەتوانرا داواکارییەکان بخوێندرێنەوە</td></tr>':(orderData.length?orderData.map(o=>{const photo=o.shoe_image_path?supabase.storage.from('shoe-order-photos').getPublicUrl(o.shoe_image_path).data.publicUrl:'';const total=Number(o.sale_price_iqd||0)*Number(o.quantity||1)+Number(o.delivery_fee_iqd||0);return '<tr><td>'+(photo?'<img src="'+safeText(photo)+'" alt="وێنەی پێڵاو" style="width:64px;height:64px;object-fit:cover;border-radius:8px;display:block;margin-bottom:6px">':'')+safeText(o.customer_name)+'<br><small>'+safeText(o.model||'')+' · '+safeText(o.color||'')+' · '+safeText(o.size||'')+' · '+Number(o.quantity||1)+' دانە</small>'+(isOwner?'<br><small>کارمەند: '+safeText(staffNames.get(o.staff_id)||'ناسراو نییە')+'</small>':'')+'</td><td>'+safeText(o.customer_phone)+'<br><small>'+safeText(o.delivery_address||'')+'</small></td><td>'+fmt(Number(o.sale_price_iqd||0)*Number(o.quantity||1))+'</td><td>'+fmt(o.employee_profit_iqd)+'</td><td>'+fmt(o.delivery_fee_iqd)+'</td><td>'+safeText(o.status)+'</td>'+'<td>'+new Date(o.created_at).toLocaleDateString()+(isOwner&&o.status==='awaiting_delivery'?'<br><button class="btn secondary reject-order" data-order-id="'+safeText(o.id)+'" data-order-total="'+total+'">ڕەتکردنەوە</button>':'')+'</td></tr>';}).join(''):'<tr><td colspan="7">هیچ داواکارییەک نییە</td></tr>');
-  document.getElementById('reportSales').textContent=fmt(orderData.reduce((a,o)=>a+Number(o.sale_price_iqd||0)*Number(o.quantity||1),0));
-  document.getElementById('reportDelivery').textContent=fmt(orderData.reduce((a,o)=>a+Number(o.delivery_fee_iqd||0),0));
-  document.getElementById('reportCommission').textContent=fmt(orderData.reduce((a,o)=>a+Number(o.employee_profit_iqd||0),0));
+  if(orderRows) orderRows.innerHTML=ordersResult.error?'<tr><td colspan="7">نەتوانرا داواکارییەکان بخوێندرێنەوە</td></tr>':(orderData.length?orderData.map(o=>{const photo=o.shoe_image_path?supabase.storage.from('shoe-order-photos').getPublicUrl(o.shoe_image_path).data.publicUrl:'';const total=Number(o.sale_price_iqd||0)*Number(o.quantity||1)+Number(o.delivery_fee_iqd||0);const statusLabel=o.status==='cancelled'?'ڕەتکراوە':o.status==='awaiting_delivery'?'چاوەڕوانی گەیاندن':o.status;return '<tr'+(o.status==='cancelled'?' style="opacity:.72"':'')+'><td>'+(photo?'<img src="'+safeText(photo)+'" alt="وێنەی پێڵاو" style="width:64px;height:64px;object-fit:cover;border-radius:8px;display:block;margin-bottom:6px">':'')+safeText(o.customer_name)+'<br><small>'+safeText(o.model||'')+' · '+safeText(o.color||'')+' · '+safeText(o.size||'')+' · '+Number(o.quantity||1)+' دانە</small>'+(isOwner?'<br><small>کارمەند: '+safeText(staffNames.get(o.staff_id)||'ناسراو نییە')+'</small>':'')+'</td><td>'+safeText(o.customer_phone)+'<br><small>'+safeText(o.delivery_address||'')+'</small></td><td>'+fmt(Number(o.sale_price_iqd||0)*Number(o.quantity||1))+'</td><td>'+fmt(o.employee_profit_iqd)+'</td><td>'+fmt(o.delivery_fee_iqd)+'</td><td>'+safeText(statusLabel)+'</td>'+'<td>'+new Date(o.created_at).toLocaleDateString()+(isOwner&&o.status==='awaiting_delivery'?'<br><button class="btn secondary reject-order" data-order-id="'+safeText(o.id)+'" data-order-total="'+total+'">ڕەتکردنەوە</button>':'')+'</td></tr>';}).join(''):'<tr><td colspan="7">هیچ داواکارییەک نییە</td></tr>');
+  document.getElementById('reportSales').textContent=fmt(activeOrders.reduce((a,o)=>a+Number(o.sale_price_iqd||0)*Number(o.quantity||1),0));
+  document.getElementById('reportDelivery').textContent=fmt(activeOrders.reduce((a,o)=>a+Number(o.delivery_fee_iqd||0),0));
+  document.getElementById('reportCommission').textContent=fmt(activeOrders.reduce((a,o)=>a+Number(o.employee_profit_iqd||0),0));
   if(isOwner){
     const {data:expenses,error}=await supabase.from('expenses').select('description,amount_iqd,expense_date').order('expense_date',{ascending:false}).limit(100);
     const expenseSection=document.querySelector('#expenses .white-card');
