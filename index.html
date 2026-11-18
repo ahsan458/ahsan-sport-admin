@@ -104,12 +104,27 @@ table{border-collapse:collapse;width:100%;min-width:600px}th,td{text-align:right
     <div class="table-wrap"><table><thead><tr><th>کڕیار</th><th>بڕی پارە</th><th>دۆخ</th><th>بەروار</th></tr></thead><tbody id="ordersRows"><tr><td colspan="4">بارکردنی داواکارییەکان...</td></tr></tbody></table></div>
   </section>
   <section class="page" id="inventory">
-    <div class="section-head"><h2>کۆگای پێڵاو</h2><button class="btn" onclick="toast('زیادکردنی کاڵا دوای پەیوەستکردنی داتابەیس کارا دەبێت')">+ زیادکردنی کاڵا</button></div>
-    <div class="white-card"><h3>بەڕێوەبردنی کۆگا</h3><p class="note">ژمارەی دانە، قەبارە، ڕەنگ، نرخی کڕین و فرۆشتن و ئاگادارکردنەوەی کەمبوونی کۆگا.</p></div>
+    <div class="section-head"><h2>کۆگای پێڵاو</h2><button class="btn" id="openAddStock">+ زیادکردنی کاڵا</button></div>
+    <div class="white-card"><h3>بەڕێوەبردنی کۆگا</h3><p class="note">ناوی بەرهەم، نرخی فرۆشتن، ڕەنگ، قەبارە و ژمارەی دانە تۆمار بکە. تەنها خاوەنی سیستەم دەتوانێت کاڵای نوێ زیاد بکات.</p></div>
+    <div class="white-card" id="addStockPanel" hidden>
+      <h3>تۆمارکردنی پێڵاوی نوێ</h3>
+      <form id="addStockForm">
+        <div class="form-grid">
+          <div class="field"><label for="stockModel">ناوی پێڵاو / مۆدێل</label><input id="stockModel" required maxlength="120" placeholder="بۆ نموونە HOKA"></div>
+          <div class="field"><label for="stockPrice">نرخی فرۆشتن (دینار)</label><input id="stockPrice" type="number" min="0" step="1" required placeholder="25000"></div>
+          <div class="field"><label for="stockColor">ڕەنگ</label><input id="stockColor" required maxlength="60" placeholder="ڕەش"></div>
+          <div class="field"><label for="stockSize">قەبارە</label><input id="stockSize" type="number" min="20" max="55" step="1" required placeholder="40"></div>
+          <div class="field"><label for="stockQuantity">ژمارەی دانە</label><input id="stockQuantity" type="number" min="0" step="1" required placeholder="10"></div>
+          <div class="field"><label for="stockDescription">تێبینی (ئارەزوومەندانە)</label><input id="stockDescription" maxlength="500" placeholder="وردەکاریی بەرهەم"></div>
+        </div>
+        <p class="note" id="stockMessage" aria-live="polite"></p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px"><button class="btn" id="saveStockBtn" type="submit">تۆمارکردنی کاڵا</button><button class="btn secondary" id="cancelStockBtn" type="button">داخستن</button></div>
+      </form>
+    </div>
     <div class="table-wrap"><table><thead><tr><th>کاڵا</th><th>قەبارە</th><th>ڕەنگ</th><th>دانە</th><th>دۆخ</th></tr></thead><tbody id="inventoryRows"><tr><td colspan="5">بارکردنی کۆگا...</td></tr></tbody></table></div>
   </section>
   <section class="page" id="products">
-    <div class="section-head"><h2>بەرهەمەکان</h2><button class="btn" onclick="toast('فۆڕمی بەرهەمی نوێ لە قۆناغی داهاتوودا پەیوەست دەکرێت')">+ بەرهەمی نوێ</button></div>
+    <div class="section-head"><h2>بەرهەمەکان</h2><button class="btn" id="goAddProduct">+ بەرهەمی نوێ</button></div>
     <div class="white-card"><p class="note">بەرهەمە چالاکەکان لە داتابەیسەوە پیشان دەدرێن.</p></div>
     <div class="table-wrap"><table><thead><tr><th>ناوی بەرهەم</th><th>نرخ (دینار)</th><th>دۆخ</th></tr></thead><tbody id="productsRows"><tr><td colspan="3">بارکردنی بەرهەمەکان...</td></tr></tbody></table></div>
   </section>
@@ -151,6 +166,7 @@ import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './supabase-config.js';
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true }
 });
+let currentProfile = null;
 const statusEl = document.getElementById('connectionStatus');
 const authPanel = document.getElementById('authPanel');
 const authMessage = document.getElementById('authMessage');
@@ -188,11 +204,15 @@ async function refreshSession(){
     logoutBtn.style.display='inline-block';
     const { data: profile, error: profileError } = await supabase.from('profiles').select('full_name, role, active').eq('id',session.user.id).maybeSingle();
     if(!profileError && profile){
+      currentProfile = profile;
+      document.getElementById('openAddStock').hidden = profile.role !== 'owner';
+      document.getElementById('goAddProduct').hidden = profile.role !== 'owner';
       await loadDashboardData(profile.role);
       if(profile.active === false){ message('ئەم هەژمارە ناچالاکە. تکایە پەیوەندی بە خاوەنی سیستەمەوە بکە.'); }
       else { authPanel.querySelector('h3').textContent='بەخێربێیت، '+(profile.full_name || 'بەکارهێنەر'); }
     }
   } else {
+    currentProfile = null;
     authPanel.hidden = false;
     statusEl.textContent='● پێویستە بچیتە ژوورەوە'; statusEl.style.background='#fff3cd'; statusEl.style.color='#8a6500';
     logoutBtn.style.display='none';
@@ -216,6 +236,69 @@ document.getElementById('signupBtn').addEventListener('click', async()=>{
   if(data.session){message('هەژمار دروست بوو و چوویتە ژوورەوە.',true); await refreshSession();}
   else {message('داواکاری تۆمارکردن نێردرا. ئیمەیڵەکەت بپشکنە بۆ پشتڕاستکردنەوە.',true);}
 });
+
+const addStockPanel = document.getElementById('addStockPanel');
+document.getElementById('openAddStock').addEventListener('click', () => {
+  if (currentProfile?.role !== 'owner') { toast('تەنها خاوەن دەتوانێت کاڵا زیاد بکات'); return; }
+  addStockPanel.hidden = !addStockPanel.hidden;
+});
+document.getElementById('goAddProduct').addEventListener('click', () => {
+  showPage('inventory');
+  if (currentProfile?.role === 'owner') addStockPanel.hidden = false;
+  else toast('تەنها خاوەن دەتوانێت کاڵا زیاد بکات');
+});
+document.getElementById('cancelStockBtn').addEventListener('click', () => {
+  addStockPanel.hidden = true;
+});
+document.getElementById('addStockForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const info = document.getElementById('stockMessage');
+  const saveButton = document.getElementById('saveStockBtn');
+  if (!currentProfile || currentProfile.role !== 'owner' || currentProfile.active !== true) {
+    info.textContent = 'دەسەڵاتی تۆمارکردنی کاڵات نییە.';
+    return;
+  }
+  const model = document.getElementById('stockModel').value.trim();
+  const price = Number(document.getElementById('stockPrice').value);
+  const color = document.getElementById('stockColor').value.trim();
+  const size = Number(document.getElementById('stockSize').value);
+  const quantity = Number(document.getElementById('stockQuantity').value);
+  const description = document.getElementById('stockDescription').value.trim();
+  if (!model || !color || !Number.isSafeInteger(price) || price < 0 ||
+      !Number.isInteger(size) || size < 20 || size > 55 ||
+      !Number.isSafeInteger(quantity) || quantity < 0) {
+    info.textContent = 'تکایە هەموو خانە پێویستەکان بە دروستی پڕ بکەرەوە.';
+    return;
+  }
+  saveButton.disabled = true;
+  info.textContent = 'کاڵاکە تۆمار دەکرێت...';
+  try {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) throw new Error('پەیوەندی هەژمارەکەت پشتڕاست نەکرایەوە.');
+    const { data: product, error: productError } = await supabase
+      .from('products')
+      .insert({ model, description: description || null, price_iqd: price, active: true, created_by: user.id })
+      .select('id')
+      .single();
+    if (productError) throw productError;
+    const { error: variantError } = await supabase
+      .from('inventory_variants')
+      .insert({ product_id: product.id, color, size, quantity });
+    if (variantError) {
+      info.textContent = 'بەرهەمەکە تۆمار بوو، بەڵام وردەکاریی کۆگا تۆمار نەبوو. تکایە وێنەی ئەم پەیامە بنێرە: ' + variantError.message;
+      return;
+    }
+    document.getElementById('addStockForm').reset();
+    info.textContent = 'کاڵاکە بە سەرکەوتوویی تۆمار کرا.';
+    toast('کاڵاکە زیاد کرا');
+    await loadDashboardData(currentProfile.role);
+  } catch (error) {
+    info.textContent = 'هەڵە لە تۆمارکردندا: ' + (error.message || 'هەڵەیەکی نەناسراو');
+  } finally {
+    saveButton.disabled = false;
+  }
+});
+
 logoutBtn.addEventListener('click',async()=>{const {error}=await supabase.auth.signOut();if(error){message(error.message);return;}message('چوویتە دەرەوە.',true);await refreshSession();});
 
 const recoveryButton = document.createElement('button');
