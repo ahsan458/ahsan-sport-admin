@@ -173,7 +173,7 @@ async function refreshSession(){
     logoutBtn.style.display='none';
   }
 }
-document.getElementById('loginBtndocument.getElementById('loginBtn').addEventListener('click', async()=>{
+document.getElementById('loginBtn').addEventListener('click', async()=>{
   const email=document.getElementById('authEmail').value.trim();
   const password=document.getElementById('authPassword').value;
   if(!email || !password){ message('ئیمەیڵ و وشەی نهێنی پڕ بکەرەوە.'); return; }
@@ -196,7 +196,7 @@ logoutBtn.addEventListener('click',async()=>{const {error}=await supabase.auth.s
 const recoveryButton = document.createElement('button');
 recoveryButton.type = 'button';
 recoveryButton.className = 'btn secondary';
-recoveryButton.textContent = 'وشەی نهێنیم 
+recoveryButton.textContent = 'وشەی نهێنیم لەبیرچووە؟';
 authPanel.appendChild(recoveryButton);
 const recoveryBox = document.createElement('div');
 recoveryBox.className = 'white-card';
