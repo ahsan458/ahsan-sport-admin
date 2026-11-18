@@ -218,8 +218,9 @@ async function refreshSession(){
       return;
     }
     currentProfile = profile;
-    document.getElementById('openAddStock').hidden = profile.role !== 'owner';
-    document.getElementById('goAddProduct').hidden = profile.role !== 'owner';
+    // Keep the action visible for diagnosis; database RLS and the submit guard still restrict writes to the owner.
+    document.getElementById('openAddStock').hidden = false;
+    document.getElementById('goAddProduct').hidden = false;
     await loadDashboardData(profile.role);
     if(profile.active === false){ message('ئەم هەژمارە ناچالاکە. تکایە پەیوەندی بە خاوەنی سیستەمەوە بکە.'); }
     else { authPanel.querySelector('h3').textContent='بەخێربێیت، '+(profile.full_name || 'بەکارهێنەر'); }
