@@ -211,6 +211,21 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
 let currentProfile = null;
 let cachedProducts = [];
 let cachedVariants = [];
+let ownerOrdersChannel = null;
+async function syncOwnerOrderNotifications(role){
+  if(ownerOrdersChannel){
+    await supabase.removeChannel(ownerOrdersChannel);
+    ownerOrdersChannel = null;
+  }
+  if(role !== 'owner') return;
+  ownerOrdersChannel = supabase
+    .channel('ahsan-owner-new-orders')
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'orders'},async(payload)=>{
+      toast('🔔 فرۆشتنی نوێ تۆمار کرا');
+      try{ await loadDashboardData('owner'); }catch(error){ console.error('Refresh after new order failed',error); }
+    })
+    .subscribe();
+}
 const statusEl = document.getElementById('connectionStatus');
 const authPanel = document.getElementById('authPanel');
 const authMessage = document.getElementById('authMessage');
@@ -295,10 +310,12 @@ async function refreshSession(){
     document.getElementById('openAddStock').hidden = false;
     document.getElementById('goAddProduct').hidden = false;
     await loadDashboardData(profile.role);
+    await syncOwnerOrderNotifications(profile.role);
     if(profile.active === false){ message('ئەم هەژمارە ناچالاکە. تکایە پەیوەندی بە خاوەنی سیستەمەوە بکە.'); }
     else { authPanel.querySelector('h3').textContent='بەخێربێیت، '+(profile.full_name || 'بەکارهێنەر'); }
   } else {
     document.body.classList.remove('staff-view');
+    await syncOwnerOrderNotifications(null);
     currentProfile = null;
     authPanel.hidden = false;
     statusEl.textContent='● پێویستە بچیتە ژوورەوە'; statusEl.style.background='#fff3cd'; statusEl.style.color='#8a6500';
