@@ -382,7 +382,7 @@ document.getElementById('saleForm').addEventListener('submit',async(event)=>{
       product_id:null,variant_id:null,model:document.getElementById('saleModel').value.trim(),
       color:document.getElementById('saleColor').value.trim(),size:Number(document.getElementById('saleSize').value),
       quantity,sale_price_iqd:price,delivery_fee_iqd:delivery,employee_profit_iqd:profit,
-      shoe_image_path:imagePath,notes:document.getElementById('saleNote').value.trim()||null,status:'pending'
+      shoe_image_path:imagePath,notes:document.getElementById('saleNote').value.trim()||null,status:'awaiting_delivery'
     });
     if(error) throw error;
     info.textContent='فرۆشتنەکە بە سەرکەوتوویی نێردرا.';
