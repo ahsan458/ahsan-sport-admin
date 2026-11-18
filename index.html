@@ -159,6 +159,7 @@ async function refreshSession(){
   const { data:{ session }, error } = await supabase.auth.getSession();
   if(error){ statusEl.textContent='● کێشەی پەیوەندی'; message(error.message); return; }
   if(session){
+    authPanel.hidden = true;
     statusEl.textContent='● چوویتە ژوورەوە'; statusEl.style.background='#e5f5e9'; statusEl.style.color='#258348';
     authPanel.querySelector('h3').textContent='بەخێربێیت بۆ AHSAN SPORT';
     message('هەژمارەکەت بە سەرکەوتوویی پەیوەست بوو. بەشەکانی داشبۆرد هێشتا پێویستیان بە پەیوەستکردنی داتا هەیە.', true);
@@ -169,6 +170,7 @@ async function refreshSession(){
       else { authPanel.querySelector('h3').textContent='بەخێربێیت، '+(profile.full_name || 'بەکارهێنەر'); }
     }
   } else {
+    authPanel.hidden = false;
     statusEl.textContent='● پێویستە بچیتە ژوورەوە'; statusEl.style.background='#fff3cd'; statusEl.style.color='#8a6500';
     logoutBtn.style.display='none';
   }
