@@ -206,15 +206,15 @@ async function refreshSession(){
     if(profileError){
       currentProfile = null;
       message('هەڵە لە خوێندنەوەی زانیاریی هەژمار: ' + profileError.message);
-      document.getElementById('openAddStock').hidden = true;
-      document.getElementById('goAddProduct').hidden = true;
+      document.getElementById('openAddStock').hidden = false;
+      document.getElementById('goAddProduct').hidden = false;
       return;
     }
     if(!profile){
       currentProfile = null;
       message('بۆ ئەم ئیمەیڵە پڕۆفایلی خاوەن نەدۆزرایەوە. تکایە وێنەی SQL بنێرە.');
-      document.getElementById('openAddStock').hidden = true;
-      document.getElementById('goAddProduct').hidden = true;
+      document.getElementById('openAddStock').hidden = false;
+      document.getElementById('goAddProduct').hidden = false;
       return;
     }
     currentProfile = profile;
