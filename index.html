@@ -186,7 +186,9 @@ import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './supabase-config.js';
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true }
 });
-let currentProfile = null;\nlet cachedProducts = [];\nlet cachedVariants = [];
+let currentProfile = null;
+let cachedProducts = [];
+let cachedVariants = [];
 const statusEl = document.getElementById('connectionStatus');
 const authPanel = document.getElementById('authPanel');
 const authMessage = document.getElementById('authMessage');
@@ -203,7 +205,11 @@ async function loadDashboardData(role){
     supabase.from('inventory_variants').select('id,product_id,color,size,quantity').order('size').limit(200),
     supabase.from('orders').select('id,customer_name,customer_phone,sale_price_iqd,employee_profit_iqd,status,created_at').order('created_at',{ascending:false}).limit(100)
   ]);
-  cachedProducts = productsResult.data || [];\n  cachedVariants = variantsResult.data || [];\n  const productSelect=document.getElementById('saleProduct');\n  if(productSelect) productSelect.innerHTML='<option value="">هەڵبژاردنی پێڵاو</option>'+cachedProducts.map(p=>'<option value="'+safeText(p.id)+'">'+safeText(p.model)+' — '+Number(p.price_iqd||0).toLocaleString('en-US')+' دینار</option>').join('');\n  if(productRows) productRows.innerHTML=productsResult.error?'<tr><td colspan="3">نەتوانرا بەرهەمەکان بخوێندرێنەوە</td></tr>':(productsResult.data.length?productsResult.data.map(p=>'<tr><td>'+safeText(p.model)+'</td><td>'+Number(p.price_iqd||0).toLocaleString('en-US')+'</td><td><span class="tag">چالاک</span></td></tr>').join(''):'<tr><td colspan="3">هێشتا بەرهەمێک نییە</td></tr>');
+  cachedProducts = productsResult.data || [];
+  cachedVariants = variantsResult.data || [];
+  const productSelect=document.getElementById('saleProduct');
+  if(productSelect) productSelect.innerHTML='<option value="">هەڵبژاردنی پێڵاو</option>'+cachedProducts.map(p=>'<option value="'+safeText(p.id)+'">'+safeText(p.model)+' — '+Number(p.price_iqd||0).toLocaleString('en-US')+' دینار</option>').join('');
+  if(productRows) productRows.innerHTML=productsResult.error?'<tr><td colspan="3">نەتوانرا بەرهەمەکان بخوێندرێنەوە</td></tr>':(productsResult.data.length?productsResult.data.map(p=>'<tr><td>'+safeText(p.model)+'</td><td>'+Number(p.price_iqd||0).toLocaleString('en-US')+'</td><td><span class="tag">چالاک</span></td></tr>').join(''):'<tr><td colspan="3">هێشتا بەرهەمێک نییە</td></tr>');
   const productNames=new Map((productsResult.data||[]).map(p=>[p.id,p.model]));
   if(inventoryRows) inventoryRows.innerHTML=variantsResult.error?'<tr><td colspan="5">نەتوانرا کۆگا بخوێندرێتەوە</td></tr>':(variantsResult.data.length?variantsResult.data.map(v=>'<tr><td>'+safeText(productNames.get(v.product_id)||'بەرهەم')+'</td><td>'+safeText(v.size)+'</td><td>'+safeText(v.color)+'</td><td>'+Number(v.quantity||0)+'</td><td>'+(v.quantity>0?'<span class="tag">بەردەست</span>':'<span class="tag">تەواو بووە</span>')+'</td></tr>').join(''):'<tr><td colspan="5">هێشتا کاڵایەک نییە</td></tr>');
   if(orderRows) orderRows.innerHTML=ordersResult.error?'<tr><td colspan="6">نەتوانرا داواکارییەکان بخوێندرێنەوە</td></tr>':(ordersResult.data.length?ordersResult.data.map(o=>'<tr><td>'+safeText(o.customer_name)+'</td><td>'+safeText(o.customer_phone)+'</td><td>'+Number(o.sale_price_iqd||0).toLocaleString('en-US')+'</td><td>'+Number(o.employee_profit_iqd||0).toLocaleString('en-US')+'</td><td>'+safeText(o.status)+'</td><td>'+new Date(o.created_at).toLocaleDateString()+'</td></tr>').join(''):'<tr><td colspan="6">هیچ داواکارییەک نییە</td></tr>');
@@ -387,7 +393,8 @@ document.getElementById('saleForm').addEventListener('submit',async(event)=>{
   }catch(error){info.textContent='هەڵە لە ناردنی فرۆشتن: '+(error.message||'هەڵەیەکی نەناسراو');}
   finally{btn.disabled=false;}
 });
-\nlogoutBtn.addEventListener('click',async()=>{const {error}=await supabase.auth.signOut();if(error){message(error.message);return;}message('چوویتە دەرەوە.',true);await refreshSession();});
+
+logoutBtn.addEventListener('click',async()=>{const {error}=await supabase.auth.signOut();if(error){message(error.message);return;}message('چوویتە دەرەوە.',true);await refreshSession();});
 
 const recoveryButton = document.createElement('button');
 recoveryButton.type = 'button';
