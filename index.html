@@ -127,7 +127,7 @@ body.staff-view [data-owner-only] { display: none !important; }
       </form>
     </div>
     <div class="white-card"><h3>فرۆشتنەکانم</h3><p class="note">تەنها خاوەن هەموو فرۆشتنەکان دەبینێت؛ کارمەند تەنها فرۆشتنەکانی خۆی دەبینێت.</p></div>
-    <div class="table-wrap"><table><thead><tr><th>کڕیار</th><th>مۆبایل</th><th>نرخ</th><th>قازانجی کارمەند</th><th>دۆخ</th><th>بەروار</th></tr></thead><tbody id="ordersRows"><tr><td colspan="6">بارکردنی داواکارییەکان...</td></tr></tbody></table></div>
+    <div class="table-wrap"><table><thead><tr><th>کڕیار</th><th>مۆبایل</th><th>نرخ</th><th>قازانجی کارمەند</th><th>کرێی گەیاندن</th><th>دۆخ</th><th>بەروار / کردار</th></tr></thead><tbody id="ordersRows"><tr><td colspan="6">بارکردنی داواکارییەکان...</td></tr></tbody></table></div>
   </section>
   <section class="page" id="inventory">
     <div class="section-head"><h2>کۆگای پێڵاو</h2><button class="btn" id="openAddStock">+ زیادکردنی کاڵا</button></div>
@@ -157,7 +157,7 @@ body.staff-view [data-owner-only] { display: none !important; }
   <section class="page" id="staff">
     <div class="section-head"><h2>ئەدمین و کارمەندان</h2></div>
     <div class="white-card"><h3>سیستەمی دەسەڵات</h3><p class="note">خاوەن: دەسەڵاتی تەواو. ژمارەی کارمەندان و ئەدمینەکان سنووری ٥ نییە. تەنها خاوەن دەتوانێت ڕۆڵی ئەدمین بدات.</p></div>
-    <div class="table-wrap"><table><thead><tr><th>ناوی کارمەند</th><th>ڕۆڵ</th><th>دۆخ</th></tr></thead><tbody id="staffRows"><tr><td colspan="3">بارکردنی کارمەندان...</td></tr></tbody></table></div>
+    <div class="white-card" data-owner-only><h3>کەمکردنەوەی حیسابی کارمەندان</h3><p class="note">کۆی بڕی داواکارییە ڕەتکراوەکان (نرخی فرۆشتن × ژمارە + کرێی گەیاندن).</p><div id="staffDeductionBalances">بارکردن...</div></div><div class="table-wrap"><table><thead><tr><th>ناوی کارمەند</th><th>ڕۆڵ</th><th>دۆخ</th></tr></thead><tbody id="staffRows"><tr><td colspan="3">بارکردنی کارمەندان...</td></tr></tbody></table></div>
   </section>
   <section class="page" id="reports" data-owner-only>
     <div class="section-head"><h2>ڕاپۆرت و قازانج</h2></div>
@@ -258,6 +258,7 @@ async function loadDashboardData(role){
     const staffRows=document.getElementById('staffRows');
     if(staffRows) staffRows.innerHTML=staffError?'<tr><td colspan="3">نەتوانرا کارمەندان بخوێندرێنەوە</td></tr>':(staffList.length?staffList.map(p=>'<tr><td>'+safeText(p.full_name||'بێ ناو')+'</td><td>'+safeText(p.role)+'</td><td>'+(p.active?'<span class="tag">چالاک</span>':'ناچالاک')+'</td></tr>').join(''):'<tr><td colspan="3">هیچ کارمەندێک نییە</td></tr>');
     document.getElementById('statStaff').textContent=staffError?'—':staffList.length.toLocaleString('en-US');
+     await loadStaffDeductionBalances();
   }
   const productSelect=document.getElementById('saleProduct');
   if(productSelect) productSelect.innerHTML='<option value="">هەڵبژاردنی پێڵاو</option>'+cachedProducts.map(p=>'<option value="'+safeText(p.id)+'">'+safeText(p.model)+' — '+Number(p.price_iqd||0).toLocaleString('en-US')+' دینار</option>').join('');
@@ -269,7 +270,7 @@ async function loadDashboardData(role){
     const ids=[...new Set(orderData.map(o=>o.staff_id).filter(Boolean))];
     if(ids.length){const {data:staffProfiles}=await supabase.from('profiles').select('id,full_name').in('id',ids);(staffProfiles||[]).forEach(p=>staffNames.set(p.id,p.full_name||'کارمەند'));}
   }
-  if(orderRows) orderRows.innerHTML=ordersResult.error?'<tr><td colspan="6">نەتوانرا داواکارییەکان بخوێندرێنەوە</td></tr>':(orderData.length?orderData.map(o=>{const photo=o.shoe_image_path?supabase.storage.from('shoe-order-photos').getPublicUrl(o.shoe_image_path).data.publicUrl:'';return '<tr><td>'+(photo?'<img src="'+safeText(photo)+'" alt="وێنەی پێڵاو" style="width:64px;height:64px;object-fit:cover;border-radius:8px;display:block;margin-bottom:6px">':'')+safeText(o.customer_name)+'<br><small>'+safeText(o.model||'')+' · '+safeText(o.color||'')+' · '+safeText(o.size||'')+' · '+Number(o.quantity||1)+' دانە</small>'+(isOwner?'<br><small>کارمەند: '+safeText(staffNames.get(o.staff_id)||'ناسراو نییە')+'</small>':'')+'</td><td>'+safeText(o.customer_phone)+'<br><small>'+safeText(o.delivery_address||'')+'</small></td><td>'+fmt(Number(o.sale_price_iqd||0)*Number(o.quantity||1))+'</td><td>'+fmt(o.employee_profit_iqd)+'</td><td>'+safeText(o.status)+'</td><td>'+new Date(o.created_at).toLocaleDateString()+'</td></tr>';}).join(''):'<tr><td colspan="6">هیچ داواکارییەک نییە</td></tr>');
+  if(orderRows) orderRows.innerHTML=ordersResult.error?'<tr><td colspan="7">نەتوانرا داواکارییەکان بخوێندرێنەوە</td></tr>':(orderData.length?orderData.map(o=>{const photo=o.shoe_image_path?supabase.storage.from('shoe-order-photos').getPublicUrl(o.shoe_image_path).data.publicUrl:'';const total=Number(o.sale_price_iqd||0)*Number(o.quantity||1)+Number(o.delivery_fee_iqd||0);return '<tr><td>'+(photo?'<img src="'+safeText(photo)+'" alt="وێنەی پێڵاو" style="width:64px;height:64px;object-fit:cover;border-radius:8px;display:block;margin-bottom:6px">':'')+safeText(o.customer_name)+'<br><small>'+safeText(o.model||'')+' · '+safeText(o.color||'')+' · '+safeText(o.size||'')+' · '+Number(o.quantity||1)+' دانە</small>'+(isOwner?'<br><small>کارمەند: '+safeText(staffNames.get(o.staff_id)||'ناسراو نییە')+'</small>':'')+'</td><td>'+safeText(o.customer_phone)+'<br><small>'+safeText(o.delivery_address||'')+'</small></td><td>'+fmt(Number(o.sale_price_iqd||0)*Number(o.quantity||1))+'</td><td>'+fmt(o.employee_profit_iqd)+'</td><td>'+fmt(o.delivery_fee_iqd)+'</td><td>'+safeText(o.status)+'</td>'+(isOwner&&o.status==='awaiting_delivery'?'<td><button class="btn secondary reject-order" data-order-id="'+safeText(o.id)+'" data-order-total="'+total+'">ڕەتکردنەوە</button></td>':'<td>—</td>')+'</tr>';}).join(''):'<tr><td colspan="7">هیچ داواکارییەک نییە</td></tr>');
   document.getElementById('reportSales').textContent=fmt(orderData.reduce((a,o)=>a+Number(o.sale_price_iqd||0)*Number(o.quantity||1),0));
   document.getElementById('reportDelivery').textContent=fmt(orderData.reduce((a,o)=>a+Number(o.delivery_fee_iqd||0),0));
   document.getElementById('reportCommission').textContent=fmt(orderData.reduce((a,o)=>a+Number(o.employee_profit_iqd||0),0));
@@ -489,6 +490,27 @@ document.getElementById('saleForm').addEventListener('submit',async(event)=>{
   finally{btn.disabled=false;}
 });
 
+document.getElementById('ordersRows').addEventListener('click',async(event)=>{
+  const btn=event.target.closest('.reject-order'); if(!btn) return;
+  const amount=Number(btn.dataset.orderTotal||0);
+  if(!confirm('دڵنیایت داواکارییەکە ڕەت بکەیتەوە؟ بڕی '+amount.toLocaleString('en-US')+' دینار (نرخی فرۆشتن + گەیاندن) لە حیسابی کارمەند کەم دەکرێتەوە. ئەم کردارە دووبارە ناکرێتەوە.')) return;
+  btn.disabled=true; btn.textContent='چاوەڕوان بە...';
+  const {data,error}=await supabase.rpc('reject_order_and_debit_staff',{p_order_id:btn.dataset.orderId});
+  if(error){toast('هەڵە: '+error.message);btn.disabled=false;btn.textContent='ڕەتکردنەوە';return;}
+  toast('داواکاری ڕەتکرایەوە؛ '+Number(data||0).toLocaleString('en-US')+' دینار لە حیسابی کارمەند کەمکرایەوە.');
+  await loadDashboardData(currentProfile.role);
+  await loadStaffDeductionBalances();
+});
+async function loadStaffDeductionBalances(){
+  const host=document.getElementById('staffDeductionBalances'); if(!host||currentProfile?.role!=='owner') return;
+  const [{data:entries,error:e1},{data:people,error:e2}]=await Promise.all([
+    supabase.from('staff_order_deductions').select('staff_id,amount_iqd'),
+    supabase.from('profiles').select('id,full_name').neq('role','owner')
+  ]);
+  if(e1||e2){host.textContent='نەتوانرا حیسابەکان بخوێندرێنەوە؛ SQL migration جێبەجێ بکە.';return;}
+  const sums=new Map(); (entries||[]).forEach(x=>sums.set(x.staff_id,(sums.get(x.staff_id)||0)+Number(x.amount_iqd||0)));
+  host.innerHTML=(people||[]).map(p=>'<p>'+safeText(p.full_name)+' — '+(sums.get(p.id)||0).toLocaleString('en-US')+' د.ع</p>').join('')||'هیچ کارمەندێک نییە';
+}
 logoutBtn.addEventListener('click',async()=>{const {error}=await supabase.auth.signOut();if(error){message(error.message);return;}message('چوویتە دەرەوە.',true);await refreshSession();});
 
 const recoveryButton = document.createElement('button');
