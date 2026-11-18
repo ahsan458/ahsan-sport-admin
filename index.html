@@ -203,14 +203,26 @@ async function refreshSession(){
     message('هەژمارەکەت بە سەرکەوتوویی پەیوەست بوو. بەشەکانی داشبۆرد هێشتا پێویستیان بە پەیوەستکردنی داتا هەیە.', true);
     logoutBtn.style.display='inline-block';
     const { data: profile, error: profileError } = await supabase.from('profiles').select('full_name, role, active').eq('id',session.user.id).maybeSingle();
-    if(!profileError && profile){
-      currentProfile = profile;
-      document.getElementById('openAddStock').hidden = profile.role !== 'owner';
-      document.getElementById('goAddProduct').hidden = profile.role !== 'owner';
-      await loadDashboardData(profile.role);
-      if(profile.active === false){ message('ئەم هەژمارە ناچالاکە. تکایە پەیوەندی بە خاوەنی سیستەمەوە بکە.'); }
-      else { authPanel.querySelector('h3').textContent='بەخێربێیت، '+(profile.full_name || 'بەکارهێنەر'); }
+    if(profileError){
+      currentProfile = null;
+      message('هەڵە لە خوێندنەوەی زانیاریی هەژمار: ' + profileError.message);
+      document.getElementById('openAddStock').hidden = true;
+      document.getElementById('goAddProduct').hidden = true;
+      return;
     }
+    if(!profile){
+      currentProfile = null;
+      message('بۆ ئەم ئیمەیڵە پڕۆفایلی خاوەن نەدۆزرایەوە. تکایە وێنەی SQL بنێرە.');
+      document.getElementById('openAddStock').hidden = true;
+      document.getElementById('goAddProduct').hidden = true;
+      return;
+    }
+    currentProfile = profile;
+    document.getElementById('openAddStock').hidden = profile.role !== 'owner';
+    document.getElementById('goAddProduct').hidden = profile.role !== 'owner';
+    await loadDashboardData(profile.role);
+    if(profile.active === false){ message('ئەم هەژمارە ناچالاکە. تکایە پەیوەندی بە خاوەنی سیستەمەوە بکە.'); }
+    else { authPanel.querySelector('h3').textContent='بەخێربێیت، '+(profile.full_name || 'بەکارهێنەر'); }
   } else {
     currentProfile = null;
     authPanel.hidden = false;
