@@ -54,7 +54,7 @@ table{border-collapse:collapse;width:100%;min-width:600px}th,td{text-align:right
     <button data-page="inventory"><span class="ico">⬡</span> کۆگای پێڵاو</button>
     <button data-page="products"><span class="ico">◈</span> بەرهەمەکان</button>
     <button data-page="staff"><span class="ico">♙</span> ئەدمین و کارمەندان</button>
-    <button data-page="reports"><span class="ico">▥</span> ڕاپۆرت و قازانج</button>
+    <button data-page="reports" data-owner-only><span class="ico">▥</span> ڕاپۆرت و قازانج</button>
     <button data-page="expenses"><span class="ico">↗</span> خەرجییەکان</button>
     <button data-page="settings"><span class="ico">⚙</span> ڕێکخستن</button>
   </nav>
@@ -84,14 +84,14 @@ table{border-collapse:collapse;width:100%;min-width:600px}th,td{text-align:right
       <div class="hero-head"><div class="hero-brand"><div class="shoe-icon">♧</div><div><h2>AHSAN SPORT</h2><p>ADMIN DASHBOARD</p></div></div><span class="online">● Online</span></div>
       <div class="welcome"><h2>بەخێربێیت، بەڕێوەبەر 👋</h2><p>کۆنتڕۆڵی تەواوی فرۆشگا و کۆگاکەت لە یەک شوێن</p></div>
       <div class="stats">
-        <div class="stat"><div class="sym">▣</div><strong id="statSales">0</strong><span>کۆی فرۆشتن</span></div>
+        <div class="stat" data-owner-only><div class="sym">▣</div><strong id="statSales">0</strong><span>کۆی فرۆشتن</span></div>
         <div class="stat"><div class="sym">▤</div><strong id="statOrders">0</strong><span>داواکارییەکان</span></div>
         <div class="stat"><div class="sym">⬡</div><strong id="statProducts">0</strong><span>بەرهەمەکان</span></div>
         <div class="stat"><div class="sym">♙</div><strong id="statStaff">—</strong><span>ئەدمین و کارمەندان</span></div>
       </div>
       <div class="panel"><h3>بەشەکانی سیستەم</h3><div class="quick-links">
         <button data-goto="sales">فرۆشتن <b>🛒</b></button><button data-goto="inventory">کۆگای پێڵاو <b>⬡</b></button>
-        <button data-goto="staff">ئەدمینەکان <b>♙</b></button><button data-goto="reports">ڕاپۆرت و قازانج <b>▥</b></button>
+        <button data-goto="staff">ئەدمینەکان <b>♙</b></button><button data-goto="reports" data-owner-only>ڕاپۆرت و قازانج <b>▥</b></button>
         <button data-goto="products">بەرهەمەکان <b>◈</b></button><button data-goto="expenses">خەرجییەکان <b>↗</b></button>
       </div></div>
       <div class="footer-note">پێشکەشی دیزاینی داشبۆرد — AHSAN SPORT</div>
@@ -155,7 +155,7 @@ table{border-collapse:collapse;width:100%;min-width:600px}th,td{text-align:right
     <div class="white-card"><h3>سیستەمی دەسەڵات</h3><p class="note">خاوەن: دەسەڵاتی تەواو. ژمارەی کارمەندان و ئەدمینەکان سنووری ٥ نییە. تەنها خاوەن دەتوانێت ڕۆڵی ئەدمین بدات.</p></div>
     <div class="table-wrap"><table><thead><tr><th>ناوی کارمەند</th><th>ڕۆڵ</th><th>دۆخ</th></tr></thead><tbody id="staffRows"><tr><td colspan="3">بارکردنی کارمەندان...</td></tr></tbody></table></div>
   </section>
-  <section class="page" id="reports">
+  <section class="page" id="reports" data-owner-only>
     <div class="section-head"><h2>ڕاپۆرت و قازانج</h2></div>
     <div class="stats">
       <div class="stat" style="background:#fff;color:#161616"><strong id="reportSales">0</strong><span>کۆی نرخی فرۆشتن (100 داواکاریی دواوە)</span></div>
@@ -196,7 +196,7 @@ table{border-collapse:collapse;width:100%;min-width:600px}th,td{text-align:right
 <div class="toast" id="toast"></div>
 <script>
 const titles={dashboard:'داشبۆردی سەرەکی',sales:'فرۆشتن و داواکاری',inventory:'کۆگای پێڵاو',products:'بەرهەمەکان',staff:'ئەدمین و کارمەندان',reports:'ڕاپۆرت و قازانج',expenses:'خەرجییەکان',settings:'ڕێکخستن'};
-function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));document.getElementById('pageTitle').textContent=titles[id]||'AHSAN SPORT';document.getElementById('sidebar').classList.remove('open');window.scrollTo(0,0)}
+function showPage(id){if(document.body.classList.contains('staff-view')&&id==='reports'){toast('ئەم ڕاپۆرتە تەنها بۆ خاوەنی سیستەمە');return}document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));document.getElementById('pageTitle').textContent=titles[id]||'AHSAN SPORT';document.getElementById('sidebar').classList.remove('open');window.scrollTo(0,0)}
 document.getElementById('nav').addEventListener('click',e=>{const b=e.target.closest('button[data-page]');if(b)showPage(b.dataset.page)});
 document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.goto)));
 document.getElementById('menuBtn').addEventListener('click',()=>document.getElementById('sidebar').classList.toggle('open'));
@@ -290,6 +290,7 @@ async function refreshSession(){
       return;
     }
     currentProfile = profile;
+    document.body.classList.toggle('staff-view',profile.role!=='owner');
     // Keep the action visible for diagnosis; database RLS and the submit guard still restrict writes to the owner.
     document.getElementById('openAddStock').hidden = false;
     document.getElementById('goAddProduct').hidden = false;
@@ -297,6 +298,7 @@ async function refreshSession(){
     if(profile.active === false){ message('ئەم هەژمارە ناچالاکە. تکایە پەیوەندی بە خاوەنی سیستەمەوە بکە.'); }
     else { authPanel.querySelector('h3').textContent='بەخێربێیت، '+(profile.full_name || 'بەکارهێنەر'); }
   } else {
+    document.body.classList.remove('staff-view');
     currentProfile = null;
     authPanel.hidden = false;
     statusEl.textContent='● پێویستە بچیتە ژوورەوە'; statusEl.style.background='#fff3cd'; statusEl.style.color='#8a6500';
