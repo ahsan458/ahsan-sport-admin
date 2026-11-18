@@ -78,7 +78,7 @@ begin
   from public.staff_payments
   where staff_id = p_staff_id;
 
-  v_balance := v_earned - v_deductions - v_paid;
+  v_balance := greatest(v_earned - v_deductions - v_paid, 0);
 
   if p_amount_iqd > v_balance then
     raise exception 'بڕی پارەدان لە بڕی ماوە زیاترە؛ بڕی ماوە: % دینار', greatest(v_balance, 0);
