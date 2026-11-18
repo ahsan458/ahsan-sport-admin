@@ -250,8 +250,14 @@ document.getElementById('signupBtn').addEventListener('click', async()=>{
 });
 
 const addStockPanel = document.getElementById('addStockPanel');
-document.getElementById('openAddStock').addEventListener('click', () => {
-  if (currentProfile?.role !== 'owner') { toast('تەنها خاوەن دەتوانێت کاڵا زیاد بکات'); return; }
+document.getElementById('openAddStock').addEventListener('click', async () => {
+  if (currentProfile?.role !== 'owner') {
+    const { data: { user } } = await supabase.auth.getUser();
+    const roleText = currentProfile?.role || 'پڕۆفایل نەدۆزرایەوە';
+    const emailText = user?.email || 'هەژمار نەناسرا';
+    toast('هەژمار: ' + emailText + ' | ڕۆڵ: ' + roleText);
+    return;
+  }
   addStockPanel.hidden = !addStockPanel.hidden;
 });
 document.getElementById('goAddProduct').addEventListener('click', () => {
