@@ -192,7 +192,60 @@ document.getElementById('signupBtn').addEventListener('click', async()=>{
   else {message('داواکاری تۆمارکردن نێردرا. ئیمەیڵەکەت بپشکنە بۆ پشتڕاستکردنەوە.',true);}
 });
 logoutBtn.addEventListener('click',async()=>{const {error}=await supabase.auth.signOut();if(error){message(error.message);return;}message('چوویتە دەرەوە.',true);await refreshSession();});
-supabase.auth.onAuthStateChange(()=>{refreshSession();});
+
+const recoveryButton = document.createElement('button');
+recoveryButton.type = 'button';
+recoveryButton.className = 'btn secondary';
+recoveryButton.textContent = 'وشەی نهێنیم 
+authPanel.appendChild(recoveryButton);
+const recoveryBox = document.createElement('div');
+recoveryBox.className = 'white-card';
+recoveryBox.style.marginTop = '12px';
+recoveryBox.hidden = true;
+recoveryBox.innerHTML = `
+  <label>وشەی نهێنی نوێ</label>
+  <input id="newPassword" type="password" placeholder="وشەی نهێنی نوێ">
+  <button id="saveNewPassword" class="btn" type="button">گۆڕینی ڕەمز</button>
+`;
+authPanel.appendChild(recoveryBox);
+
+recoveryButton.addEventListener('click', async () => {
+  const email = document.getElementById('authEmail').value.trim();
+  if (!email) {
+    message('سەرەتا ئیمەیڵەکەت بنووسە');
+    return;
+  }
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname
+  });
+  if (error) {
+    message(error.message);
+    return;
+  }
+  message('لینکی گۆڕینی ڕەمز بۆ ئیمەیڵەکەت نێردرا', true);
+});
+
+document.getElementById('saveNewPassword').addEventListener('click', async () => {
+  const password = document.getElementById('newPassword').value;
+  if (password.length < 6) {
+    message('ڕەمز دەبێت لانیکەم ٦ پیت بێت');
+    return;
+  }
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    message(error.message);
+    return;
+  }
+  recoveryBox.hidden = true;
+  message('وشەی نهێنی بە سەرکەوتوویی گۆڕدرا', true);
+});
+
+supabase.auth.onAuthStateChange((event) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    recoveryBox.hidden = false;
+    message('وشەی نهێنی نوێ بنووسە');
+  }
+});
+    supabase.auth.onAuthStateChange(()=>{refreshSession();});
 refreshSession();
 </script>
-</body></html>
