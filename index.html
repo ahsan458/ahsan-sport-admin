@@ -99,9 +99,29 @@ table{border-collapse:collapse;width:100%;min-width:600px}th,td{text-align:right
   </section>
 
   <section class="page" id="sales">
-    <div class="section-head"><h2>فرۆشتن و داواکاری</h2><button class="btn" onclick="toast('فۆڕمی تۆمارکردنی فرۆشتن لە قۆناغی پەیوەستکردنی داتابەیس زیاد دەکرێت')">+ فرۆشتنی نوێ</button></div>
-    <div class="white-card"><h3>کۆی داواکارییەکان</h3><p class="note">لێرەدا داواکارییەکان، ناوی کڕیار، بڕی پارە، دۆخی پارەدان و گەیاندن دەردەکەون.</p></div>
-    <div class="table-wrap"><table><thead><tr><th>کڕیار</th><th>بڕی پارە</th><th>دۆخ</th><th>بەروار</th></tr></thead><tbody id="ordersRows"><tr><td colspan="4">بارکردنی داواکارییەکان...</td></tr></tbody></table></div>
+    <div class="section-head"><h2>فرۆشتن و داواکاری</h2><button class="btn" id="openSaleForm">+ تۆمارکردنی فرۆشتن</button></div>
+    <div class="white-card"><h3>تۆمارکردنی فرۆشتنی نوێ</h3><p class="note">کارمەند زانیاریی کڕیار و کاڵای فرۆشراو تۆمار دەکات. قازانجی کارمەند خانەیەکی کراوەیە و خۆی بڕەکەی دەنووسێت.</p></div>
+    <div class="white-card" id="saleFormPanel" hidden>
+      <form id="saleForm">
+        <h3>زانیاریی کڕیار</h3>
+        <div class="form-grid">
+          <div class="field"><label for="saleCustomer">ناوی کڕیار</label><input id="saleCustomer" required maxlength="120"></div>
+          <div class="field"><label for="salePhone">ژمارەی مۆبایل</label><input id="salePhone" required maxlength="30" inputmode="tel"></div>
+          <div class="field"><label for="saleAddress">ناونیشانی گەیاندن</label><input id="saleAddress" required maxlength="300"></div>
+          <div class="field"><label for="saleProduct">پێڵاوی فرۆشراو</label><select id="saleProduct" required><option value="">هەڵبژاردنی پێڵاو</option></select></div>
+          <div class="field"><label for="saleVariant">ڕەنگ و قەبارە</label><select id="saleVariant" required><option value="">سەرەتا پێڵاو هەڵبژێرە</option></select></div>
+          <div class="field"><label for="saleQuantity">ژمارەی دانە</label><input id="saleQuantity" type="number" min="1" step="1" value="1" required></div>
+          <div class="field"><label for="salePrice">نرخی فرۆشتن (بۆ هەر جوت، دینار)</label><input id="salePrice" type="number" min="0" step="1" required></div>
+          <div class="field"><label for="saleDelivery">کرێی گەیاندن (دینار)</label><input id="saleDelivery" type="number" min="0" step="1" value="0" required></div>
+          <div class="field"><label for="saleProfit">قازانجی کارمەند (دینار)</label><input id="saleProfit" type="number" min="0" step="1" placeholder="هەر بڕێک دەتەوێت" required></div>
+          <div class="field"><label for="saleNote">تێبینی</label><input id="saleNote" maxlength="500" placeholder="تێبینییەکی ئارەزوومەندانە"></div>
+        </div>
+        <p class="note" id="saleMessage" aria-live="polite"></p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px"><button class="btn" id="saveSaleBtn" type="submit">ناردنی فرۆشتن</button><button class="btn secondary" id="cancelSaleBtn" type="button">داخستن</button></div>
+      </form>
+    </div>
+    <div class="white-card"><h3>فرۆشتنەکانم</h3><p class="note">تەنها خاوەن هەموو فرۆشتنەکان دەبینێت؛ کارمەند تەنها فرۆشتنەکانی خۆی دەبینێت.</p></div>
+    <div class="table-wrap"><table><thead><tr><th>کڕیار</th><th>مۆبایل</th><th>نرخ</th><th>قازانجی کارمەند</th><th>دۆخ</th><th>بەروار</th></tr></thead><tbody id="ordersRows"><tr><td colspan="6">بارکردنی داواکارییەکان...</td></tr></tbody></table></div>
   </section>
   <section class="page" id="inventory">
     <div class="section-head"><h2>کۆگای پێڵاو</h2><button class="btn" id="openAddStock">+ زیادکردنی کاڵا</button></div>
@@ -166,7 +186,7 @@ import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './supabase-config.js';
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true }
 });
-let currentProfile = null;
+let currentProfile = null;\nlet cachedProducts = [];\nlet cachedVariants = [];
 const statusEl = document.getElementById('connectionStatus');
 const authPanel = document.getElementById('authPanel');
 const authMessage = document.getElementById('authMessage');
@@ -181,12 +201,12 @@ async function loadDashboardData(role){
   const [productsResult,variantsResult,ordersResult]=await Promise.all([
     supabase.from('products').select('id,model,price_iqd,active').eq('active',true).order('created_at',{ascending:false}).limit(100),
     supabase.from('inventory_variants').select('id,product_id,color,size,quantity').order('size').limit(200),
-    supabase.from('orders').select('id,customer_name,sale_price_iqd,status,created_at').order('created_at',{ascending:false}).limit(100)
+    supabase.from('orders').select('id,customer_name,customer_phone,sale_price_iqd,employee_profit_iqd,status,created_at').order('created_at',{ascending:false}).limit(100)
   ]);
-  if(productRows) productRows.innerHTML=productsResult.error?'<tr><td colspan="3">نەتوانرا بەرهەمەکان بخوێندرێنەوە</td></tr>':(productsResult.data.length?productsResult.data.map(p=>'<tr><td>'+safeText(p.model)+'</td><td>'+Number(p.price_iqd||0).toLocaleString('en-US')+'</td><td><span class="tag">چالاک</span></td></tr>').join(''):'<tr><td colspan="3">هێشتا بەرهەمێک نییە</td></tr>');
+  cachedProducts = productsResult.data || [];\n  cachedVariants = variantsResult.data || [];\n  const productSelect=document.getElementById('saleProduct');\n  if(productSelect) productSelect.innerHTML='<option value="">هەڵبژاردنی پێڵاو</option>'+cachedProducts.map(p=>'<option value="'+safeText(p.id)+'">'+safeText(p.model)+' — '+Number(p.price_iqd||0).toLocaleString('en-US')+' دینار</option>').join('');\n  if(productRows) productRows.innerHTML=productsResult.error?'<tr><td colspan="3">نەتوانرا بەرهەمەکان بخوێندرێنەوە</td></tr>':(productsResult.data.length?productsResult.data.map(p=>'<tr><td>'+safeText(p.model)+'</td><td>'+Number(p.price_iqd||0).toLocaleString('en-US')+'</td><td><span class="tag">چالاک</span></td></tr>').join(''):'<tr><td colspan="3">هێشتا بەرهەمێک نییە</td></tr>');
   const productNames=new Map((productsResult.data||[]).map(p=>[p.id,p.model]));
   if(inventoryRows) inventoryRows.innerHTML=variantsResult.error?'<tr><td colspan="5">نەتوانرا کۆگا بخوێندرێتەوە</td></tr>':(variantsResult.data.length?variantsResult.data.map(v=>'<tr><td>'+safeText(productNames.get(v.product_id)||'بەرهەم')+'</td><td>'+safeText(v.size)+'</td><td>'+safeText(v.color)+'</td><td>'+Number(v.quantity||0)+'</td><td>'+(v.quantity>0?'<span class="tag">بەردەست</span>':'<span class="tag">تەواو بووە</span>')+'</td></tr>').join(''):'<tr><td colspan="5">هێشتا کاڵایەک نییە</td></tr>');
-  if(orderRows) orderRows.innerHTML=ordersResult.error?'<tr><td colspan="4">نەتوانرا داواکارییەکان بخوێندرێنەوە</td></tr>':(ordersResult.data.length?ordersResult.data.map(o=>'<tr><td>'+safeText(o.customer_name)+'</td><td>'+Number(o.sale_price_iqd||0).toLocaleString('en-US')+'</td><td>'+safeText(o.status)+'</td><td>'+new Date(o.created_at).toLocaleDateString()+'</td></tr>').join(''):'<tr><td colspan="4">هیچ داواکارییەک نییە</td></tr>');
+  if(orderRows) orderRows.innerHTML=ordersResult.error?'<tr><td colspan="6">نەتوانرا داواکارییەکان بخوێندرێنەوە</td></tr>':(ordersResult.data.length?ordersResult.data.map(o=>'<tr><td>'+safeText(o.customer_name)+'</td><td>'+safeText(o.customer_phone)+'</td><td>'+Number(o.sale_price_iqd||0).toLocaleString('en-US')+'</td><td>'+Number(o.employee_profit_iqd||0).toLocaleString('en-US')+'</td><td>'+safeText(o.status)+'</td><td>'+new Date(o.created_at).toLocaleDateString()+'</td></tr>').join(''):'<tr><td colspan="6">هیچ داواکارییەک نییە</td></tr>');
   if(isOwner){
     const {data:expenses,error}=await supabase.from('expenses').select('description,amount_iqd,expense_date').order('expense_date',{ascending:false}).limit(100);
     const expenseSection=document.querySelector('#expenses .white-card');
@@ -322,7 +342,52 @@ document.getElementById('addStockForm').addEventListener('submit', async (event)
   }
 });
 
-logoutBtn.addEventListener('click',async()=>{const {error}=await supabase.auth.signOut();if(error){message(error.message);return;}message('چوویتە دەرەوە.',true);await refreshSession();});
+
+const salePanel=document.getElementById('saleFormPanel');
+document.getElementById('openSaleForm').addEventListener('click',()=>{salePanel.hidden=!salePanel.hidden;});
+document.getElementById('cancelSaleBtn').addEventListener('click',()=>{salePanel.hidden=true;});
+document.getElementById('saleProduct').addEventListener('change',()=>{
+  const productId=document.getElementById('saleProduct').value;
+  const variants=cachedVariants.filter(v=>v.product_id===productId);
+  document.getElementById('saleVariant').innerHTML='<option value="">هەڵبژاردنی ڕەنگ و قەبارە</option>'+variants.map(v=>'<option value="'+safeText(v.id)+'">'+safeText(v.color)+' / '+safeText(v.size)+' — بەردەست: '+Number(v.quantity||0)+'</option>').join('');
+  const product=cachedProducts.find(p=>p.id===productId);
+  if(product) document.getElementById('salePrice').value=product.price_iqd||'';
+});
+document.getElementById('saleForm').addEventListener('submit',async(event)=>{
+  event.preventDefault();
+  const info=document.getElementById('saleMessage'),btn=document.getElementById('saveSaleBtn');
+  if(!currentProfile||currentProfile.active!==true){info.textContent='هەژمارەکەت چالاک نییە یان پڕۆفایلەکەت نەدۆزرایەوە.';return;}
+  const product=cachedProducts.find(p=>p.id===document.getElementById('saleProduct').value);
+  const variant=cachedVariants.find(v=>v.id===document.getElementById('saleVariant').value);
+  const quantity=Number(document.getElementById('saleQuantity').value);
+  const price=Number(document.getElementById('salePrice').value);
+  const delivery=Number(document.getElementById('saleDelivery').value);
+  const profit=Number(document.getElementById('saleProfit').value);
+  if(!product||!variant||!Number.isSafeInteger(quantity)||quantity<1||quantity>variant.quantity||![price,delivery,profit].every(n=>Number.isSafeInteger(n)&&n>=0)){
+    info.textContent='تکایە پێڵاو، قەبارە، ژمارە و نرخەکان بە دروستی هەڵبژێرە. ژمارە نابێت لە کۆگای بەردەست زیاتر بێت.';return;
+  }
+  btn.disabled=true;info.textContent='فرۆشتنەکە دەنێردرێت...';
+  try{
+    const {data:{user},error:userError}=await supabase.auth.getUser();
+    if(userError||!user) throw new Error('تکایە دووبارە بچۆ ژوورەوە.');
+    const {error}=await supabase.from('orders').insert({
+      staff_id:user.id,customer_name:document.getElementById('saleCustomer').value.trim(),
+      customer_phone:document.getElementById('salePhone').value.trim(),
+      delivery_address:document.getElementById('saleAddress').value.trim(),
+      product_id:product.id,variant_id:variant.id,model:product.model,color:variant.color,size:variant.size,
+      quantity,sale_price_iqd:price,delivery_fee_iqd:delivery,employee_profit_iqd:profit,
+      notes:document.getElementById('saleNote').value.trim()||null,status:'pending'
+    });
+    if(error) throw error;
+    info.textContent='فرۆشتنەکە بە سەرکەوتوویی نێردرا.';
+    document.getElementById('saleForm').reset();
+    document.getElementById('saleVariant').innerHTML='<option value="">سەرەتا پێڵاو هەڵبژێرە</option>';
+    toast('فرۆشتنەکە نێردرا بۆ خاوەن');
+    await loadDashboardData(currentProfile.role);
+  }catch(error){info.textContent='هەڵە لە ناردنی فرۆشتن: '+(error.message||'هەڵەیەکی نەناسراو');}
+  finally{btn.disabled=false;}
+});
+\nlogoutBtn.addEventListener('click',async()=>{const {error}=await supabase.auth.signOut();if(error){message(error.message);return;}message('چوویتە دەرەوە.',true);await refreshSession();});
 
 const recoveryButton = document.createElement('button');
 recoveryButton.type = 'button';
