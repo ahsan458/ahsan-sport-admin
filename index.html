@@ -536,7 +536,7 @@ async function openEmployeeAccount(staffId){
   const earned=active.reduce((n,o)=>n+Number(o.employee_profit_iqd||0)*Number(o.quantity||1),0);
   const deducted=(deductions||[]).reduce((n,d)=>n+Number(d.amount_iqd||0),0);
   const paid=(payments||[]).reduce((n,p)=>n+Number(p.amount_iqd||0),0);
-  const balance=earned-deducted-paid;
+  const balance=Math.max(0,earned-deducted-paid);
   const fmt=n=>Number(n||0).toLocaleString('en-US')+' د.ع';
   detail.innerHTML='<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h3>حیسابی '+safeText(person.full_name||'کارمەند')+'</h3><button class="btn secondary" id="closeEmployeeDetail">داخستن</button></div>'+
     '<div class="stats" style="margin:14px 0"><div class="stat" style="background:#f5f5f5;color:#111"><strong>'+pairs+'</strong><span>کۆی جوتە فرۆشراوەکان</span></div><div class="stat" style="background:#f5f5f5;color:#111"><strong>'+fmt(earned)+'</strong><span>کۆی قازانجی کارمەند</span></div><div class="stat" style="background:#f5f5f5;color:#111"><strong>'+fmt(deducted)+'</strong><span>کەمکردنەوەکان</span></div><div class="stat" style="background:#f5f5f5;color:#111"><strong>'+fmt(paid)+'</strong><span>پارەی نێردراو</span></div></div>'+
