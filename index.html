@@ -212,7 +212,10 @@ async function refreshSession(){
     }
     if(!profile){
       currentProfile = null;
-      message('بۆ ئەم ئیمەیڵە پڕۆفایلی خاوەن نەدۆزرایەوە. تکایە وێنەی SQL بنێرە.');
+      const { data: { user: diagnosticUser } } = await supabase.auth.getUser();
+      const diagnosticId = diagnosticUser?.id || 'ناسراو نییە';
+      const diagnosticEmail = diagnosticUser?.email || 'ناسراو نییە';
+      message('پڕۆفایل نەدۆزرایەوە | ئیمەیڵ: ' + diagnosticEmail + ' | User ID: ' + diagnosticId);
       document.getElementById('openAddStock').hidden = false;
       document.getElementById('goAddProduct').hidden = false;
       return;
@@ -256,7 +259,8 @@ document.getElementById('openAddStock').addEventListener('click', async () => {
     const { data: { user } } = await supabase.auth.getUser();
     const roleText = currentProfile?.role || 'پڕۆفایل نەدۆزرایەوە';
     const emailText = user?.email || 'هەژمار نەناسرا';
-    toast('هەژمار: ' + emailText + ' | ڕۆڵ: ' + roleText);
+    const userIdText = user?.id || 'ناسراو نییە';
+    toast('هەژمار: ' + emailText + ' | User ID: ' + userIdText + ' | ڕۆڵ: ' + roleText);
     return;
   }
   addStockPanel.hidden = !addStockPanel.hidden;
