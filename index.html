@@ -375,14 +375,19 @@ document.getElementById('saleForm').addEventListener('submit',async(event)=>{
     const imagePath=user.id+'/'+Date.now()+'.'+ext;
     const {error:uploadError}=await supabase.storage.from('shoe-order-photos').upload(imagePath,photo,{contentType:photo.type,upsert:false});
     if(uploadError) throw uploadError;
-    const {error}=await supabase.from('orders').insert({
-      staff_id:user.id,customer_name:document.getElementById('saleCustomer').value.trim(),
-      customer_phone:document.getElementById('salePhone').value.trim(),
-      delivery_address:document.getElementById('saleAddress').value.trim(),
-      product_id:null,variant_id:null,model:document.getElementById('saleModel').value.trim(),
-      color:document.getElementById('saleColor').value.trim(),size:Number(document.getElementById('saleSize').value),
-      quantity,sale_price_iqd:price,delivery_fee_iqd:delivery,employee_profit_iqd:profit,
-      shoe_image_path:imagePath,notes:document.getElementById('saleNote').value.trim()||null,status:'awaiting_delivery'
+    const {error}=await supabase.rpc('submit_sale',{
+      p_customer_name:document.getElementById('saleCustomer').value.trim(),
+      p_customer_phone:document.getElementById('salePhone').value.trim(),
+      p_delivery_address:document.getElementById('saleAddress').value.trim(),
+      p_model:document.getElementById('saleModel').value.trim(),
+      p_color:document.getElementById('saleColor').value.trim(),
+      p_size:Number(document.getElementById('saleSize').value),
+      p_quantity:quantity,
+      p_sale_price_iqd:price,
+      p_delivery_fee_iqd:delivery,
+      p_employee_profit_iqd:profit,
+      p_shoe_image_path:imagePath,
+      p_notes:document.getElementById('saleNote').value.trim()||null
     });
     if(error) throw error;
     info.textContent='فرۆشتنەکە بە سەرکەوتوویی نێردرا.';
