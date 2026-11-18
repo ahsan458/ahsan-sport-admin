@@ -101,16 +101,17 @@ table{border-collapse:collapse;width:100%;min-width:600px}th,td{text-align:right
   <section class="page" id="sales">
     <div class="section-head"><h2>فرۆشتن و داواکاری</h2><button class="btn" onclick="toast('فۆڕمی تۆمارکردنی فرۆشتن لە قۆناغی پەیوەستکردنی داتابەیس زیاد دەکرێت')">+ فرۆشتنی نوێ</button></div>
     <div class="white-card"><h3>کۆی داواکارییەکان</h3><p class="note">لێرەدا داواکارییەکان، ناوی کڕیار، بڕی پارە، دۆخی پارەدان و گەیاندن دەردەکەون.</p></div>
-    <div class="table-wrap"><table><thead><tr><th>ژمارە</th><th>کڕیار</th><th>بڕی پارە</th><th>دۆخ</th><th>بەروار</th></tr></thead><tbody><tr><td colspan="5">هیچ داواکارییەکی تۆمارکراو نییە — نموونەی بەتاڵ</td></tr></tbody></table></div>
+    <div class="table-wrap"><table><thead><tr><th>کڕیار</th><th>بڕی پارە</th><th>دۆخ</th><th>بەروار</th></tr></thead><tbody id="ordersRows"><tr><td colspan="4">بارکردنی داواکارییەکان...</td></tr></tbody></table></div>
   </section>
   <section class="page" id="inventory">
     <div class="section-head"><h2>کۆگای پێڵاو</h2><button class="btn" onclick="toast('زیادکردنی کاڵا دوای پەیوەستکردنی داتابەیس کارا دەبێت')">+ زیادکردنی کاڵا</button></div>
     <div class="white-card"><h3>بەڕێوەبردنی کۆگا</h3><p class="note">ژمارەی دانە، قەبارە، ڕەنگ، نرخی کڕین و فرۆشتن و ئاگادارکردنەوەی کەمبوونی کۆگا.</p></div>
-    <div class="table-wrap"><table><thead><tr><th>کاڵا</th><th>قەبارە</th><th>ڕەنگ</th><th>دانە</th><th>دۆخ</th></tr></thead><tbody><tr><td colspan="5">هێشتا کاڵایەک زیاد نەکراوە</td></tr></tbody></table></div>
+    <div class="table-wrap"><table><thead><tr><th>کاڵا</th><th>قەبارە</th><th>ڕەنگ</th><th>دانە</th><th>دۆخ</th></tr></thead><tbody id="inventoryRows"><tr><td colspan="5">بارکردنی کۆگا...</td></tr></tbody></table></div>
   </section>
   <section class="page" id="products">
     <div class="section-head"><h2>بەرهەمەکان</h2><button class="btn" onclick="toast('فۆڕمی بەرهەمی نوێ لە قۆناغی داهاتوودا پەیوەست دەکرێت')">+ بەرهەمی نوێ</button></div>
-    <div class="white-card"><p class="note">وێنەی پێڵاو، ناوی بەرهەم، براند، نرخ، قەبارە و ڕەنگ لێرە بەڕێوە دەبرێن.</p></div>
+    <div class="white-card"><p class="note">بەرهەمە چالاکەکان لە داتابەیسەوە پیشان دەدرێن.</p></div>
+    <div class="table-wrap"><table><thead><tr><th>ناوی بەرهەم</th><th>نرخ (دینار)</th><th>دۆخ</th></tr></thead><tbody id="productsRows"><tr><td colspan="3">بارکردنی بەرهەمەکان...</td></tr></tbody></table></div>
   </section>
   <section class="page" id="staff">
     <div class="section-head"><h2>ئەدمین و کارمەندان</h2><button class="btn" onclick="toast('تەنها خاوەنی سیستەم دەتوانێت ئەدمین زیاد بکات')">+ زیادکردنی ئەدمین</button></div>
@@ -155,6 +156,27 @@ const authPanel = document.getElementById('authPanel');
 const authMessage = document.getElementById('authMessage');
 const logoutBtn = document.getElementById('logoutBtn');
 function message(text, ok=false){ authMessage.textContent=text; authMessage.style.color=ok?'#21834a':'#a33'; }
+function safeText(value){return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+async function loadDashboardData(role){
+  const productRows=document.getElementById('productsRows');
+  const inventoryRows=document.getElementById('inventoryRows');
+  const orderRows=document.getElementById('ordersRows');
+  const isOwner=role==='owner';
+  const [productsResult,variantsResult,ordersResult]=await Promise.all([
+    supabase.from('products').select('id,model,price_iqd,active').eq('active',true).order('created_at',{ascending:false}).limit(100),
+    supabase.from('inventory_variants').select('id,product_id,color,size,quantity').order('size').limit(200),
+    supabase.from('orders').select('id,customer_name,sale_price_iqd,status,created_at').order('created_at',{ascending:false}).limit(100)
+  ]);
+  if(productRows) productRows.innerHTML=productsResult.error?'<tr><td colspan="3">نەتوانرا بەرهەمەکان بخوێندرێنەوە</td></tr>':(productsResult.data.length?productsResult.data.map(p=>'<tr><td>'+safeText(p.model)+'</td><td>'+Number(p.price_iqd||0).toLocaleString('en-US')+'</td><td><span class="tag">چالاک</span></td></tr>').join(''):'<tr><td colspan="3">هێشتا بەرهەمێک نییە</td></tr>');
+  const productNames=new Map((productsResult.data||[]).map(p=>[p.id,p.model]));
+  if(inventoryRows) inventoryRows.innerHTML=variantsResult.error?'<tr><td colspan="5">نەتوانرا کۆگا بخوێندرێتەوە</td></tr>':(variantsResult.data.length?variantsResult.data.map(v=>'<tr><td>'+safeText(productNames.get(v.product_id)||'بەرهەم')+'</td><td>'+safeText(v.size)+'</td><td>'+safeText(v.color)+'</td><td>'+Number(v.quantity||0)+'</td><td>'+(v.quantity>0?'<span class="tag">بەردەست</span>':'<span class="tag">تەواو بووە</span>')+'</td></tr>').join(''):'<tr><td colspan="5">هێشتا کاڵایەک نییە</td></tr>');
+  if(orderRows) orderRows.innerHTML=ordersResult.error?'<tr><td colspan="4">نەتوانرا داواکارییەکان بخوێندرێنەوە</td></tr>':(ordersResult.data.length?ordersResult.data.map(o=>'<tr><td>'+safeText(o.customer_name)+'</td><td>'+Number(o.sale_price_iqd||0).toLocaleString('en-US')+'</td><td>'+safeText(o.status)+'</td><td>'+new Date(o.created_at).toLocaleDateString()+'</td></tr>').join(''):'<tr><td colspan="4">هیچ داواکارییەک نییە</td></tr>');
+  if(isOwner){
+    const {data:expenses,error}=await supabase.from('expenses').select('description,amount_iqd,expense_date').order('expense_date',{ascending:false}).limit(100);
+    const expenseSection=document.querySelector('#expenses .white-card');
+    if(expenseSection) expenseSection.innerHTML='<h3>خەرجییە تۆمارکراوەکان</h3>'+(error?'<p class="note">نەتوانرا خەرجییەکان بخوێندرێنەوە</p>':(expenses.length?'<div class="table-wrap"><table><thead><tr><th>وەسف</th><th>بڕ (دینار)</th><th>بەروار</th></tr></thead><tbody>'+expenses.map(e=>'<tr><td>'+safeText(e.description)+'</td><td>'+Number(e.amount_iqd||0).toLocaleString('en-US')+'</td><td>'+safeText(e.expense_date)+'</td></tr>').join('')+'</tbody></table></div>':'<p class="note">هیچ خەرجییەک تۆمار نەکراوە</p>'));
+  }
+}
 async function refreshSession(){
   const { data:{ session }, error } = await supabase.auth.getSession();
   if(error){ statusEl.textContent='● کێشەی پەیوەندی'; message(error.message); return; }
@@ -166,6 +188,7 @@ async function refreshSession(){
     logoutBtn.style.display='inline-block';
     const { data: profile, error: profileError } = await supabase.from('profiles').select('full_name, role, active').eq('id',session.user.id).maybeSingle();
     if(!profileError && profile){
+      await loadDashboardData(profile.role);
       if(profile.active === false){ message('ئەم هەژمارە ناچالاکە. تکایە پەیوەندی بە خاوەنی سیستەمەوە بکە.'); }
       else { authPanel.querySelector('h3').textContent='بەخێربێیت، '+(profile.full_name || 'بەکارهێنەر'); }
     }
