@@ -246,6 +246,12 @@ supabase.auth.onAuthStateChange((event) => {
     message('وشەی نهێنی نوێ بنووسە');
   }
 });
-    supabase.auth.onAuthStateChange(()=>{refreshSession();});
+    supabase.auth.onAuthStateChange((event) => {
+  if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' || event === 'PASSWORD_RECOVERY') {
+    Promise.resolve().then(() => refreshSession());
+  }
+});
 refreshSession();
 </script>
+</body>
+</html>
