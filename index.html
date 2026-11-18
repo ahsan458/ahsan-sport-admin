@@ -108,8 +108,10 @@ table{border-collapse:collapse;width:100%;min-width:600px}th,td{text-align:right
           <div class="field"><label for="saleCustomer">ناوی کڕیار</label><input id="saleCustomer" required maxlength="120"></div>
           <div class="field"><label for="salePhone">ژمارەی مۆبایل</label><input id="salePhone" required maxlength="30" inputmode="tel"></div>
           <div class="field"><label for="saleAddress">ناونیشانی گەیاندن</label><input id="saleAddress" required maxlength="300"></div>
-          <div class="field"><label for="saleProduct">پێڵاوی فرۆشراو</label><select id="saleProduct" required><option value="">هەڵبژاردنی پێڵاو</option></select></div>
-          <div class="field"><label for="saleVariant">ڕەنگ و قەبارە</label><select id="saleVariant" required><option value="">سەرەتا پێڵاو هەڵبژێرە</option></select></div>
+          <div class="field"><label for="saleModel">ناوی پێڵاو / مۆدێل</label><input id="saleModel" required maxlength="120" placeholder="وەک Hoka"></div>
+          <div class="field"><label for="saleColor">ڕەنگ</label><input id="saleColor" required maxlength="80"></div>
+          <div class="field"><label for="saleSize">قەبارە</label><input id="saleSize" type="number" min="20" max="55" step="1" required placeholder="وەک 40"></div>
+          <div class="field"><label for="salePhoto">وێنەی پێڵاو</label><input id="salePhoto" type="file" accept="image/*" required><small class="note">وێنەکە لە مۆبایلەکەت هەڵبژێرە (تا 5MB)</small></div>
           <div class="field"><label for="saleQuantity">ژمارەی دانە</label><input id="saleQuantity" type="number" min="1" step="1" value="1" required></div>
           <div class="field"><label for="salePrice">نرخی فرۆشتن (بۆ هەر جوت، دینار)</label><input id="salePrice" type="number" min="0" step="1" required></div>
           <div class="field"><label for="saleDelivery">کرێی گەیاندن (دینار)</label><input id="saleDelivery" type="number" min="0" step="1" value="0" required></div>
@@ -203,7 +205,7 @@ async function loadDashboardData(role){
   const [productsResult,variantsResult,ordersResult]=await Promise.all([
     supabase.from('products').select('id,model,price_iqd,active').eq('active',true).order('created_at',{ascending:false}).limit(100),
     supabase.from('inventory_variants').select('id,product_id,color,size,quantity').order('size').limit(200),
-    supabase.from('orders').select('id,customer_name,customer_phone,sale_price_iqd,employee_profit_iqd,status,created_at').order('created_at',{ascending:false}).limit(100)
+    supabase.from('orders').select('id,customer_name,customer_phone,delivery_address,model,color,size,quantity,shoe_image_path,sale_price_iqd,delivery_fee_iqd,employee_profit_iqd,status,created_at').order('created_at',{ascending:false}).limit(100)
   ]);
   cachedProducts = productsResult.data || [];
   cachedVariants = variantsResult.data || [];
@@ -212,7 +214,7 @@ async function loadDashboardData(role){
   if(productRows) productRows.innerHTML=productsResult.error?'<tr><td colspan="3">نەتوانرا بەرهەمەکان بخوێندرێنەوە</td></tr>':(productsResult.data.length?productsResult.data.map(p=>'<tr><td>'+safeText(p.model)+'</td><td>'+Number(p.price_iqd||0).toLocaleString('en-US')+'</td><td><span class="tag">چالاک</span></td></tr>').join(''):'<tr><td colspan="3">هێشتا بەرهەمێک نییە</td></tr>');
   const productNames=new Map((productsResult.data||[]).map(p=>[p.id,p.model]));
   if(inventoryRows) inventoryRows.innerHTML=variantsResult.error?'<tr><td colspan="5">نەتوانرا کۆگا بخوێندرێتەوە</td></tr>':(variantsResult.data.length?variantsResult.data.map(v=>'<tr><td>'+safeText(productNames.get(v.product_id)||'بەرهەم')+'</td><td>'+safeText(v.size)+'</td><td>'+safeText(v.color)+'</td><td>'+Number(v.quantity||0)+'</td><td>'+(v.quantity>0?'<span class="tag">بەردەست</span>':'<span class="tag">تەواو بووە</span>')+'</td></tr>').join(''):'<tr><td colspan="5">هێشتا کاڵایەک نییە</td></tr>');
-  if(orderRows) orderRows.innerHTML=ordersResult.error?'<tr><td colspan="6">نەتوانرا داواکارییەکان بخوێندرێنەوە</td></tr>':(ordersResult.data.length?ordersResult.data.map(o=>'<tr><td>'+safeText(o.customer_name)+'</td><td>'+safeText(o.customer_phone)+'</td><td>'+Number(o.sale_price_iqd||0).toLocaleString('en-US')+'</td><td>'+Number(o.employee_profit_iqd||0).toLocaleString('en-US')+'</td><td>'+safeText(o.status)+'</td><td>'+new Date(o.created_at).toLocaleDateString()+'</td></tr>').join(''):'<tr><td colspan="6">هیچ داواکارییەک نییە</td></tr>');
+  if(orderRows) orderRows.innerHTML=ordersResult.error?'<tr><td colspan="6">نەتوانرا داواکارییەکان بخوێندرێنەوە</td></tr>':(ordersResult.data.length?ordersResult.data.map(o=>{const photo=o.shoe_image_path?supabase.storage.from('shoe-order-photos').getPublicUrl(o.shoe_image_path).data.publicUrl:'';return '<tr><td>'+(photo?'<img src="'+safeText(photo)+'" alt="وێنەی پێڵاو" style="width:64px;height:64px;object-fit:cover;border-radius:8px;display:block;margin-bottom:6px">':'')+safeText(o.customer_name)+'<br><small>'+safeText(o.model||'')+' · '+safeText(o.color||'')+' · '+safeText(o.size||'')+' · '+Number(o.quantity||1)+' دانە</small></td><td>'+safeText(o.customer_phone)+'<br><small>'+safeText(o.delivery_address||'')+'</small></td><td>'+Number(o.sale_price_iqd||0).toLocaleString('en-US')+'</td><td>'+Number(o.employee_profit_iqd||0).toLocaleString('en-US')+'</td><td>'+safeText(o.status)+'</td><td>'+new Date(o.created_at).toLocaleDateString()+'</td></tr>';}).join(''):'<tr><td colspan="6">هیچ داواکارییەک نییە</td></tr>');
   if(isOwner){
     const {data:expenses,error}=await supabase.from('expenses').select('description,amount_iqd,expense_date').order('expense_date',{ascending:false}).limit(100);
     const expenseSection=document.querySelector('#expenses .white-card');
@@ -352,42 +354,39 @@ document.getElementById('addStockForm').addEventListener('submit', async (event)
 const salePanel=document.getElementById('saleFormPanel');
 document.getElementById('openSaleForm').addEventListener('click',()=>{salePanel.hidden=!salePanel.hidden;});
 document.getElementById('cancelSaleBtn').addEventListener('click',()=>{salePanel.hidden=true;});
-document.getElementById('saleProduct').addEventListener('change',()=>{
-  const productId=document.getElementById('saleProduct').value;
-  const variants=cachedVariants.filter(v=>v.product_id===productId);
-  document.getElementById('saleVariant').innerHTML='<option value="">هەڵبژاردنی ڕەنگ و قەبارە</option>'+variants.map(v=>'<option value="'+safeText(v.id)+'">'+safeText(v.color)+' / '+safeText(v.size)+' — بەردەست: '+Number(v.quantity||0)+'</option>').join('');
-  const product=cachedProducts.find(p=>p.id===productId);
-  if(product) document.getElementById('salePrice').value=product.price_iqd||'';
-});
 document.getElementById('saleForm').addEventListener('submit',async(event)=>{
   event.preventDefault();
   const info=document.getElementById('saleMessage'),btn=document.getElementById('saveSaleBtn');
   if(!currentProfile||currentProfile.active!==true){info.textContent='هەژمارەکەت چالاک نییە یان پڕۆفایلەکەت نەدۆزرایەوە.';return;}
-  const product=cachedProducts.find(p=>p.id===document.getElementById('saleProduct').value);
-  const variant=cachedVariants.find(v=>v.id===document.getElementById('saleVariant').value);
   const quantity=Number(document.getElementById('saleQuantity').value);
   const price=Number(document.getElementById('salePrice').value);
   const delivery=Number(document.getElementById('saleDelivery').value);
   const profit=Number(document.getElementById('saleProfit').value);
-  if(!product||!variant||!Number.isSafeInteger(quantity)||quantity<1||quantity>variant.quantity||![price,delivery,profit].every(n=>Number.isSafeInteger(n)&&n>=0)){
-    info.textContent='تکایە پێڵاو، قەبارە، ژمارە و نرخەکان بە دروستی هەڵبژێرە. ژمارە نابێت لە کۆگای بەردەست زیاتر بێت.';return;
+  const photo=document.getElementById('salePhoto').files[0];
+  if(!document.getElementById('saleModel').value.trim()||!document.getElementById('saleColor').value.trim()||!document.getElementById('saleSize').value||!photo||!Number.isSafeInteger(quantity)||quantity<1||![price,delivery,profit].every(n=>Number.isSafeInteger(n)&&n>=0)){
+    info.textContent='تکایە وێنە و زانیارییەکانی پێڵاو و نرخەکان بە دروستی پڕ بکەرەوە.';return;
   }
-  btn.disabled=true;info.textContent='فرۆشتنەکە دەنێردرێت...';
+  if(!photo.type.startsWith('image/')||photo.size>5*1024*1024){info.textContent='تکایە وێنەیەک هەڵبژێرە کە لە 5MB کەمتر بێت.';return;}
+  btn.disabled=true;info.textContent='وێنە و زانیارییەکان دەنێردرێن...';
   try{
     const {data:{user},error:userError}=await supabase.auth.getUser();
     if(userError||!user) throw new Error('تکایە دووبارە بچۆ ژوورەوە.');
+    const ext=(photo.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
+    const imagePath=user.id+'/'+Date.now()+'.'+ext;
+    const {error:uploadError}=await supabase.storage.from('shoe-order-photos').upload(imagePath,photo,{contentType:photo.type,upsert:false});
+    if(uploadError) throw uploadError;
     const {error}=await supabase.from('orders').insert({
       staff_id:user.id,customer_name:document.getElementById('saleCustomer').value.trim(),
       customer_phone:document.getElementById('salePhone').value.trim(),
       delivery_address:document.getElementById('saleAddress').value.trim(),
-      product_id:product.id,variant_id:variant.id,model:product.model,color:variant.color,size:variant.size,
+      product_id:null,variant_id:null,model:document.getElementById('saleModel').value.trim(),
+      color:document.getElementById('saleColor').value.trim(),size:Number(document.getElementById('saleSize').value),
       quantity,sale_price_iqd:price,delivery_fee_iqd:delivery,employee_profit_iqd:profit,
-      notes:document.getElementById('saleNote').value.trim()||null,status:'pending'
+      shoe_image_path:imagePath,notes:document.getElementById('saleNote').value.trim()||null,status:'pending'
     });
     if(error) throw error;
     info.textContent='فرۆشتنەکە بە سەرکەوتوویی نێردرا.';
     document.getElementById('saleForm').reset();
-    document.getElementById('saleVariant').innerHTML='<option value="">سەرەتا پێڵاو هەڵبژێرە</option>';
     toast('فرۆشتنەکە نێردرا بۆ خاوەن');
     await loadDashboardData(currentProfile.role);
   }catch(error){info.textContent='هەڵە لە ناردنی فرۆشتن: '+(error.message||'هەڵەیەکی نەناسراو');}
