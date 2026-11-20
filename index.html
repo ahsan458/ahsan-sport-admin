@@ -127,8 +127,10 @@ body.staff-view [data-owner-only] { display: none !important; }
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px"><button class="btn" id="saveSaleBtn" type="submit">ناردنی فرۆشتن</button><button class="btn secondary" id="cancelSaleBtn" type="button">داخستن</button></div>
       </form>
     </div>
-    <div class="white-card"><h3>فرۆشتنەکانم</h3><p class="note">تەنها خاوەن هەموو فرۆشتنەکان دەبینێت؛ کارمەند تەنها فرۆشتنەکانی خۆی دەبینێت.</p></div>
+    <div class="white-card"><h3>داواکاریی نوێ</h3><p class="note">داواکارییەکان تا کاتی تۆمارکردنی وەسڵ لێرە دەمێننەوە. داواکاریی سەیرنەکراو بە نیشانەی تایبەت دیاری دەکرێت.</p></div>
     <div class="table-wrap"><table><thead><tr><th>کڕیار</th><th>مۆبایل</th><th>نرخ</th><th>قازانجی کارمەند</th><th>کرێی گەیاندن</th><th>دۆخ</th><th>بەروار / کردار</th></tr></thead><tbody id="ordersRows"><tr><td colspan="7">بارکردنی داواکارییەکان...</td></tr></tbody></table></div>
+    <div class="white-card" style="margin-top:18px"><h3>داواکارییە تۆمارکراوەکان</h3><p class="note">ئەو داواکارییانەی وەسڵیان تۆمار کراوە لێرە کۆدەبنەوە و نیشانەی «تۆمارکراو»یان لەسەرە.</p></div>
+    <div class="table-wrap"><table><thead><tr><th>کڕیار</th><th>مۆبایل</th><th>نرخ</th><th>قازانجی کارمەند</th><th>کرێی گەیاندن</th><th>دۆخ</th><th>بەروار / کردار</th></tr></thead><tbody id="recordedOrdersRows"><tr><td colspan="7">بارکردنی داواکارییەکان...</td></tr></tbody></table></div>
   </section>
   <section class="page" id="inventory">
     <div class="section-head"><h2>کۆگای پێڵاو</h2><button class="btn" id="openAddStock">+ زیادکردنی کاڵا</button></div>
@@ -247,11 +249,12 @@ async function loadDashboardData(role){
   const productRows=document.getElementById('productsRows');
   const inventoryRows=document.getElementById('inventoryRows');
   const orderRows=document.getElementById('ordersRows');
+  const recordedOrderRows=document.getElementById('recordedOrdersRows');
   const isOwner=role==='owner';
   const [productsResult,variantsResult,ordersResult]=await Promise.all([
     supabase.from('products').select('id,model,price_iqd,active').eq('active',true).order('created_at',{ascending:false}).limit(100),
     supabase.from('inventory_variants').select('id,product_id,color,size,quantity').order('size').limit(200),
-    supabase.from('orders').select('id,staff_id,customer_name,customer_phone,delivery_address,model,color,size,quantity,shoe_image_path,sale_price_iqd,delivery_fee_iqd,employee_profit_iqd,status,created_at').order('created_at',{ascending:false}).limit(100)
+    supabase.from('orders').select('id,staff_id,customer_name,customer_phone,delivery_address,model,color,size,quantity,shoe_image_path,sale_price_iqd,delivery_fee_iqd,employee_profit_iqd,status,viewed_at,receipt_recorded_at,created_at').order('created_at',{ascending:false}).limit(100)
   ]);
   cachedProducts = productsResult.data || [];
   cachedVariants = variantsResult.data || [];
@@ -280,7 +283,11 @@ async function loadDashboardData(role){
     const ids=[...new Set(orderData.map(o=>o.staff_id).filter(Boolean))];
     if(ids.length){const {data:staffProfiles}=await supabase.from('profiles').select('id,full_name').in('id',ids);(staffProfiles||[]).forEach(p=>staffNames.set(p.id,p.full_name||'کارمەند'));}
   }
-  if(orderRows) orderRows.innerHTML=ordersResult.error?'<tr><td colspan="7">نەتوانرا داواکارییەکان بخوێندرێنەوە</td></tr>':(orderData.length?orderData.map(o=>{const photo=o.shoe_image_path?supabase.storage.from('shoe-order-photos').getPublicUrl(o.shoe_image_path).data.publicUrl:'';const total=Number(o.sale_price_iqd||0)*Number(o.quantity||1)+Number(o.delivery_fee_iqd||0);const statusLabel=o.status==='cancelled'?'ڕەتکراوە':o.status==='awaiting_delivery'?'چاوەڕوانی گەیاندن':o.status;return '<tr'+(o.status==='cancelled'?' style="opacity:.72"':'')+'><td>'+(photo?'<img src="'+safeText(photo)+'" alt="وێنەی پێڵاو" style="width:64px;height:64px;object-fit:cover;border-radius:8px;display:block;margin-bottom:6px">':'')+safeText(o.customer_name)+'<br><small>'+safeText(o.model||'')+' · '+safeText(o.color||'')+' · '+safeText(o.size||'')+' · '+Number(o.quantity||1)+' دانە</small>'+(isOwner?'<br><small>کارمەند: '+safeText(staffNames.get(o.staff_id)||'ناسراو نییە')+'</small>':'')+'</td><td>'+safeText(o.customer_phone)+'<br><small>'+safeText(o.delivery_address||'')+'</small></td><td>'+fmt(Number(o.sale_price_iqd||0)*Number(o.quantity||1))+'</td><td>'+fmt(Number(o.employee_profit_iqd||0)*Number(o.quantity||1))+'</td><td>'+fmt(o.delivery_fee_iqd)+'</td><td>'+safeText(statusLabel)+'</td>'+'<td>'+new Date(o.created_at).toLocaleDateString()+(isOwner&&o.status==='awaiting_delivery'?'<br><button class="btn secondary reject-order" data-order-id="'+safeText(o.id)+'" data-order-total="'+total+'">ڕەتکردنەوە</button>':'')+'</td></tr>';}).join(''):'<tr><td colspan="7">هیچ داواکارییەک نییە</td></tr>');
+  const renderOrderRows=(rows,recorded=false)=>rows.length?rows.map(o=>{const photo=o.shoe_image_path?supabase.storage.from('shoe-order-photos').getPublicUrl(o.shoe_image_path).data.publicUrl:'';const total=Number(o.sale_price_iqd||0)*Number(o.quantity||1)+Number(o.delivery_fee_iqd||0);const statusLabel=o.status==='cancelled'?'ڕەتکراوە':o.status==='awaiting_delivery'?'چاوەڕوانی گەیاندن':o.status;const viewLabel=o.viewed_at?'<span class="tag">سەیرکراو</span>':'<span class="tag" style="background:#fff3cd;color:#8a6500">هێشتا سەیرنەکراوە</span>';const actions=isOwner?(o.viewed_at?'': '<br><button class="btn secondary view-order" data-order-id="'+safeText(o.id)+'">سەیرکردنی داواکاری</button>')+(isOwner&&!recorded&&o.status!=='cancelled'?'<br><button class="btn green record-receipt" data-order-id="'+safeText(o.id)+'">تۆمارکردنی وەسڵ</button>':'')+(isOwner&&!recorded&&o.status==='awaiting_delivery'?'<br><button class="btn secondary reject-order" data-order-id="'+safeText(o.id)+'" data-order-total="'+total+'">ڕەتکردنەوە</button>':''):'';return '<tr'+(o.status==='cancelled'?' style="opacity:.72"':'')+'><td>'+(photo?'<img src="'+safeText(photo)+'" alt="وێنەی پێڵاو" style="width:64px;height:64px;object-fit:cover;border-radius:8px;display:block;margin-bottom:6px">':'')+safeText(o.customer_name)+'<br><small>'+safeText(o.model||'')+' · '+safeText(o.color||'')+' · '+safeText(o.size||'')+' · '+Number(o.quantity||1)+' دانە</small>'+(isOwner?'<br><small>کارمەند: '+safeText(staffNames.get(o.staff_id)||'ناسراو نییە')+'</small>':'')+'</td><td>'+safeText(o.customer_phone)+'<br><small>'+safeText(o.delivery_address||'')+'</small></td><td>'+fmt(Number(o.sale_price_iqd||0)*Number(o.quantity||1))+'</td><td>'+fmt(Number(o.employee_profit_iqd||0)*Number(o.quantity||1))+'</td><td>'+fmt(o.delivery_fee_iqd)+'</td><td>'+safeText(statusLabel)+'<br>'+viewLabel+(recorded?'<br><span class="tag">تۆمارکراو</span>':'')+'</td><td>'+new Date(o.created_at).toLocaleDateString()+actions+'</td></tr>';}).join(''):'<tr><td colspan="7">هیچ داواکارییەک نییە</td></tr>';
+  const newOrders=orderData.filter(o=>!o.receipt_recorded_at);
+  const recordedOrders=orderData.filter(o=>!!o.receipt_recorded_at);
+  if(orderRows) orderRows.innerHTML=ordersResult.error?'<tr><td colspan="7">نەتوانرا داواکارییەکان بخوێندرێنەوە</td></tr>':renderOrderRows(newOrders);
+  if(recordedOrderRows) recordedOrderRows.innerHTML=ordersResult.error?'<tr><td colspan="7">نەتوانرا داواکارییەکان بخوێندرێنەوە</td></tr>':renderOrderRows(recordedOrders,true);
   document.getElementById('reportSales').textContent=fmt(activeOrders.reduce((a,o)=>a+Number(o.sale_price_iqd||0)*Number(o.quantity||1),0));
   document.getElementById('reportDelivery').textContent=fmt(activeOrders.reduce((a,o)=>a+Number(o.delivery_fee_iqd||0),0));
   document.getElementById('reportCommission').textContent=fmt(activeOrders.reduce((a,o)=>a+Number(o.employee_profit_iqd||0)*Number(o.quantity||1),0));
@@ -500,17 +507,35 @@ document.getElementById('saleForm').addEventListener('submit',async(event)=>{
   finally{btn.disabled=false;}
 });
 
-document.getElementById('ordersRows').addEventListener('click',async(event)=>{
-  const btn=event.target.closest('.reject-order'); if(!btn) return;
-  const amount=Number(btn.dataset.orderTotal||0);
+async function handleOrderAction(event){
+  const viewBtn=event.target.closest('.view-order');
+  const receiptBtn=event.target.closest('.record-receipt');
+  const rejectBtn=event.target.closest('.reject-order');
+  const btn=viewBtn||receiptBtn||rejectBtn;
+  if(!btn) return;
+  if(currentProfile?.role!=='owner'||currentProfile.active!==true){toast('تەنها خاوەن دەتوانێت ئەم کردارە ئەنجام بدات');return;}
+  if(viewBtn||receiptBtn){
+    const column=viewBtn?'viewed_at':'receipt_recorded_at';
+    const label=viewBtn?'سەیرکراو':'وەسڵ تۆمارکرا';
+    if(receiptBtn&&!confirm('دڵنیایت وەسڵی ئەم داواکارییە تۆمار بکەیت؟ دوای تۆمارکردن دەچێتە بەشی داواکارییە تۆمارکراوەکان.')) return;
+    btn.disabled=true;btn.textContent='چاوەڕوان بە...';
+    const {error}=await supabase.from('orders').update({[column]:new Date().toISOString()}).eq('id',btn.dataset.orderId);
+    if(error){toast('نەتوانرا '+label+' تۆمار بکرێت: '+error.message);btn.disabled=false;btn.textContent=viewBtn?'سەیرکردنی داواکاری':'تۆمارکردنی وەسڵ';return;}
+    toast(label+' بە سەرکەوتوویی تۆمار کرا');
+    await loadDashboardData(currentProfile.role);
+    return;
+  }
+  const amount=Number(rejectBtn.dataset.orderTotal||0);
   if(!confirm('دڵنیایت داواکارییەکە ڕەت بکەیتەوە؟ بڕی '+amount.toLocaleString('en-US')+' دینار (نرخی فرۆشتن + گەیاندن) لە حیسابی کارمەند کەم دەکرێتەوە. ئەم کردارە دووبارە ناکرێتەوە.')) return;
-  btn.disabled=true; btn.textContent='چاوەڕوان بە...';
-  const {data,error}=await supabase.rpc('reject_order_and_debit_staff',{p_order_id:btn.dataset.orderId});
-  if(error){toast('هەڵە: '+error.message);btn.disabled=false;btn.textContent='ڕەتکردنەوە';return;}
+  rejectBtn.disabled=true; rejectBtn.textContent='چاوەڕوان بە...';
+  const {data,error}=await supabase.rpc('reject_order_and_debit_staff',{p_order_id:rejectBtn.dataset.orderId});
+  if(error){toast('هەڵە: '+error.message);rejectBtn.disabled=false;rejectBtn.textContent='ڕەتکردنەوە';return;}
   toast('داواکاری ڕەتکرایەوە؛ '+Number(data||0).toLocaleString('en-US')+' دینار لە حیسابی کارمەند کەمکرایەوە.');
   await loadDashboardData(currentProfile.role);
   await loadStaffDeductionBalances();
-});
+}
+document.getElementById('ordersRows').addEventListener('click',handleOrderAction);
+document.getElementById('recordedOrdersRows').addEventListener('click',handleOrderAction);
 
 async function loadEmployeeAccountList(){
   const host=document.getElementById('employeeAccountList');
