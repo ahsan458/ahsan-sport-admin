@@ -45,6 +45,20 @@ table{border-collapse:collapse;width:100%;min-width:600px}th,td{text-align:right
 
 /* Hide owner-only totals and financial pages from staff accounts */
 body.staff-view [data-owner-only] { display: none !important; }
+
+.partner-info{background:linear-gradient(135deg,#171717,#292316);color:#fff;border:1px solid #d7ad2c;border-radius:20px;padding:22px;margin:0 0 18px;box-shadow:0 10px 28px #00000012}
+.partner-info h2{margin:0 0 8px;color:#f2c735;font-size:23px}
+.partner-info .partner-intro{margin:0 0 16px;color:#e4e4e4;line-height:1.9}
+.partner-math{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+.partner-math div{background:#ffffff10;border:1px solid #ffffff20;border-radius:13px;padding:13px}
+.partner-math strong{display:block;color:#f2c735;font-size:19px;margin-bottom:5px}
+.partner-math span{font-size:13px;color:#ddd}
+.partner-examples{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.partner-example{background:#fff;color:#171717;border-radius:13px;padding:13px;text-align:center}
+.partner-example strong{display:block;font-size:20px;color:#21834a;margin:5px 0}
+.partner-info .partner-rule{border-top:1px solid #ffffff30;margin:16px 0 0;padding-top:13px;color:#f7df8b;font-weight:700;line-height:1.9}
+@media(max-width:720px){.partner-info{padding:17px}.partner-info h2{font-size:20px}.partner-math,.partner-examples{grid-template-columns:1fr}.partner-example{text-align:right}}
+
 </style>
 </head>
 <body>
@@ -85,6 +99,22 @@ body.staff-view [data-owner-only] { display: none !important; }
   </header>
 
   <section class="page active" id="dashboard">
+    <section class="partner-info" id="partnerInfo" aria-labelledby="partnerInfoTitle">
+      <h2 id="partnerInfoTitle">💰 ببە بە هاوبەشی AHSAN SPORT و قازانج بکە!</h2>
+      <p class="partner-intro">ئێمە پێڵاوەکانمان بۆ ئێوە دابین دەکەین؛ ئێوە تەنها ڕیکلامیان بۆ بکەن و داواکاری وەربگرن. پێویست ناکات پێشتر کاڵا بکڕن یان کۆگای پێڵاوتان هەبێت.</p>
+      <div class="partner-math">
+        <div><strong>20,000 دینار</strong><span>نرخی بنەڕەتی پێڵاو</span></div>
+        <div><strong>5,000 دینار</strong><span>کرێی گەیاندن</span></div>
+        <div><strong>25,000 دینار</strong><span>کۆی نرخ لەگەڵ گەیاندن</span></div>
+      </div>
+      <p class="partner-intro">ئێوە دەتوانن پێڵاوەکە بە نرخی خۆتان بفرۆشن. بۆ نموونە:</p>
+      <div class="partner-examples">
+        <div class="partner-example">نرخی فرۆشتن: 26,000<strong>1,000 دینار قازانج</strong></div>
+        <div class="partner-example">نرخی فرۆشتن: 28,000<strong>3,000 دینار قازانج</strong></div>
+        <div class="partner-example">نرخی فرۆشتن: 30,000<strong>5,000 دینار قازانج</strong></div>
+      </div>
+      <p class="partner-rule">یاساکە زۆر ئاسانە: سەرەتا 25,000 دینار بۆ نرخی پێڵاو و گەیاندنە. هەر بڕە پارەیەک لەوە زیاتر بیفرۆشن، تەواوی زیادەکە قازانجی ئێوەیە. هەرچی زیاتر بفرۆشن، قازانجی زیاتر بۆ خۆتانە! ❤️</p>
+    </section>
     <div class="hero">
       <div class="hero-head"><div class="hero-brand"><div class="shoe-icon">♧</div><div><h2>AHSAN SPORT</h2><p>ADMIN DASHBOARD</p></div></div><span class="online">● Online</span></div>
       <div class="welcome"><h2>بەخێربێیت، بەڕێوەبەر 👋</h2><p>کۆنتڕۆڵی تەواوی فرۆشگا و کۆگاکەت لە یەک شوێن</p></div>
