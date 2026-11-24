@@ -189,7 +189,7 @@ body.staff-view [data-owner-only] { display: none !important; }
   </section>
   <section class="page" id="staff">
     <div class="section-head"><h2>ئەدمین و کارمەندان</h2></div>
-    <div class="white-card"><h3>سیستەمی دەسەڵات</h3><p class="note">خاوەن: دەسەڵاتی تەواو. ژمارەی کارمەندان و ئەدمینەکان سنووری ٥ نییە. تەنها خاوەن دەتوانێت ڕۆڵی ئەدمین بدات.</p></div>
+    <div class="white-card"><h3>سیستەمی دەسەڵات</h3><p class="note">خاوەن: دەسەڵاتی تەواو. ژمارەی کارمەندان و ئەدمینەکان سنووری ٥ نییە. تەنها خاوەن دەتوانێت ڕۆڵی ئەدمین بدات، هەژماری ئەدمین بلۆک بکات یان چالاکی بکاتەوە. بلۆککردن هیچ فرۆشتن و حیسابێک ناسڕێتەوە.</p></div>
     <div class="white-card" data-owner-only><h3>کەمکردنەوەی حیسابی کارمەندان</h3><p class="note">کۆی بڕی داواکارییە ڕەتکراوەکان (نرخی فرۆشتن × ژمارە + کرێی گەیاندن).</p><div id="staffDeductionBalances">بارکردن...</div></div><div class="table-wrap"><table><thead><tr><th>ناوی کارمەند</th><th>ڕۆڵ</th><th>دۆخ</th><th>کردار</th></tr></thead><tbody id="staffRows"><tr><td colspan="4">بارکردنی کارمەندان...</td></tr></tbody></table></div>
   </section>
   <section class="page" id="employeeAccounts" data-owner-only>
@@ -296,9 +296,15 @@ async function loadDashboardData(role){
   document.getElementById('statOrders').textContent=activeOrders.length;
   document.getElementById('statProducts').textContent=cachedProducts.length.toLocaleString('en-US');
   if(role==='owner'){
-    const {data:staffList,error:staffError}=await supabase.from('profiles').select('id,full_name,role,active').eq('active',true).neq('role','owner').order('full_name');
+    const {data:staffList,error:staffError}=await supabase.from('profiles').select('id,full_name,role,active').neq('role','owner').order('full_name');
     const staffRows=document.getElementById('staffRows');
-    if(staffRows) staffRows.innerHTML=staffError?'<tr><td colspan="4">نەتوانرا کارمەندان بخوێندرێنەوە</td></tr>':(staffList.length?staffList.map(p=>'<tr><td>'+safeText(p.full_name||'بێ ناو')+'</td><td>'+safeText(p.role)+'</td><td><span class="tag">چالاک</span></td><td><button type="button" class="btn secondary block-staff" data-staff-id="'+safeText(p.id)+'" data-staff-name="'+safeText(p.full_name||'کارمەند')+'">قەدەغەکردنی هەژمار</button></td></tr>').join(''):'<tr><td colspan="4">هیچ کارمەندێکی چالاک نییە</td></tr>');
+    if(staffRows) staffRows.innerHTML=staffError?'<tr><td colspan="4">نەتوانرا کارمەندان بخوێندرێنەوە</td></tr>':(staffList.length?staffList.map(p=>{
+      const isAdmin=p.role==='admin';
+      const isActive=p.active!==false;
+      const status=isActive?'<span class="tag">چالاک</span>':'<span class="tag" style="background:#fde8e7;color:#b42318">بلۆککراو</span>';
+      const action=isAdmin?(isActive?'<button type="button" class="btn secondary block-staff" data-staff-id="'+safeText(p.id)+'" data-staff-name="'+safeText(p.full_name||'ئەدمین')+'">بلۆککردن</button>':'<button type="button" class="btn green unblock-admin" data-staff-id="'+safeText(p.id)+'" data-staff-name="'+safeText(p.full_name||'ئەدمین')+'">چالاککردنەوە</button>'):'—';
+      return '<tr><td>'+safeText(p.full_name||'بێ ناو')+'</td><td>'+safeText(p.role)+'</td><td>'+status+'</td><td>'+action+'</td></tr>';
+    }).join(''):'<tr><td colspan="4">هیچ هەژمارێک نییە</td></tr>');
     document.getElementById('statStaff').textContent=staffError?'—':staffList.length.toLocaleString('en-US');
      await loadStaffDeductionBalances();
      await loadEmployeeAccountList();
@@ -574,19 +580,25 @@ async function handleOrderAction(event){
   await loadStaffDeductionBalances();
 }
 document.getElementById('staffRows').addEventListener('click',async(event)=>{
-  const btn=event.target.closest('.block-staff');
+  const blockBtn=event.target.closest('.block-staff');
+  const unblockBtn=event.target.closest('.unblock-admin');
+  const btn=blockBtn||unblockBtn;
   if(!btn) return;
-  if(currentProfile?.role!=='owner'){toast('تەنها خاوەن دەتوانێت هەژماری کارمەند قەدەغە بکات');return;}
+  if(currentProfile?.role!=='owner'||currentProfile.active===false){toast('تەنها خاوەنی چالاک دەتوانێت ئەم کردارە ئەنجام بدات');return;}
   const staffId=btn.dataset.staffId;
-  const staffName=btn.dataset.staffName||'ئەم کارمەندە';
-  if(!confirm('دڵنیایت هەژماری «'+staffName+'» بۆ هەمیشە قەدەغە بکەیت؟ کارمەند ناتوانێت دووبارە بچێتە ژوورەوە، بەڵام مێژووی فرۆشتن و حیسابەکانی دەمێننەوە.')) return;
+  const staffName=btn.dataset.staffName||'ئەدمین';
+  const isUnblock=!!unblockBtn;
+  const prompt=isUnblock
+    ?'دڵنیایت هەژماری ئەدمینی «'+staffName+'» چالاک بکەیتەوە؟'
+    :'دڵنیایت هەژماری ئەدمینی «'+staffName+'» بلۆک بکەیت؟ ناتوانێت بچێتە ژوورەوە، بەڵام هەموو فرۆشتن و حیسابەکانی دەمێننەوە.';
+  if(!confirm(prompt)) return;
   btn.disabled=true; btn.textContent='چاوەڕوان بە...';
-  const {data,error}=await supabase.functions.invoke('block-staff',{body:{staff_id:staffId}});
+  const {data,error}=await supabase.functions.invoke(isUnblock?'unblock-admin':'block-staff',{body:{staff_id:staffId}});
   if(error||!data?.success){
-    toast('نەتوانرا هەژمارەکە قەدەغە بکرێت: '+(data?.error||error?.message||'هەڵەیەکی نەناسراو'));
-    btn.disabled=false; btn.textContent='قەدەغەکردنی هەژمار'; return;
+    toast('نەتوانرا کردارەکە تەواو بکرێت: '+(data?.error||error?.message||'هەڵەیەکی نەناسراو'));
+    btn.disabled=false; btn.textContent=isUnblock?'چالاککردنەوە':'بلۆککردن'; return;
   }
-  toast('هەژماری '+staffName+' قەدەغە کرا؛ مێژووی حیسابەکە پارێزرا');
+  toast(isUnblock?'هەژماری '+staffName+' چالاک کرایەوە':'هەژماری '+staffName+' بلۆک کرا؛ مێژووی حیسابەکە پارێزرا');
   await loadDashboardData('owner');
 });
 document.getElementById('ordersRows').addEventListener('click',handleOrderAction);
