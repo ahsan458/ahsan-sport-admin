@@ -190,7 +190,7 @@ body.staff-view [data-owner-only] { display: none !important; }
   <section class="page" id="staff">
     <div class="section-head"><h2>ئەدمین و کارمەندان</h2></div>
     <div class="white-card"><h3>سیستەمی دەسەڵات</h3><p class="note">خاوەن: دەسەڵاتی تەواو. ژمارەی کارمەندان و ئەدمینەکان سنووری ٥ نییە. تەنها خاوەن دەتوانێت ڕۆڵی ئەدمین بدات.</p></div>
-    <div class="white-card" data-owner-only><h3>کەمکردنەوەی حیسابی کارمەندان</h3><p class="note">کۆی بڕی داواکارییە ڕەتکراوەکان (نرخی فرۆشتن × ژمارە + کرێی گەیاندن).</p><div id="staffDeductionBalances">بارکردن...</div></div><div class="table-wrap"><table><thead><tr><th>ناوی کارمەند</th><th>ڕۆڵ</th><th>دۆخ</th></tr></thead><tbody id="staffRows"><tr><td colspan="3">بارکردنی کارمەندان...</td></tr></tbody></table></div>
+    <div class="white-card" data-owner-only><h3>کەمکردنەوەی حیسابی کارمەندان</h3><p class="note">کۆی بڕی داواکارییە ڕەتکراوەکان (نرخی فرۆشتن × ژمارە + کرێی گەیاندن).</p><div id="staffDeductionBalances">بارکردن...</div></div><div class="table-wrap"><table><thead><tr><th>ناوی کارمەند</th><th>ڕۆڵ</th><th>دۆخ</th><th>کردار</th></tr></thead><tbody id="staffRows"><tr><td colspan="4">بارکردنی کارمەندان...</td></tr></tbody></table></div>
   </section>
   <section class="page" id="employeeAccounts" data-owner-only>
     <div class="section-head"><h2>حیسابی کارمەندان</h2><button class="btn secondary" id="backToStaffAccounts">گەڕانەوە</button></div>
@@ -296,9 +296,9 @@ async function loadDashboardData(role){
   document.getElementById('statOrders').textContent=activeOrders.length;
   document.getElementById('statProducts').textContent=cachedProducts.length.toLocaleString('en-US');
   if(role==='owner'){
-    const {data:staffList,error:staffError}=await supabase.from('profiles').select('id,full_name,role,active').order('full_name');
+    const {data:staffList,error:staffError}=await supabase.from('profiles').select('id,full_name,role,active').eq('active',true).neq('role','owner').order('full_name');
     const staffRows=document.getElementById('staffRows');
-    if(staffRows) staffRows.innerHTML=staffError?'<tr><td colspan="3">نەتوانرا کارمەندان بخوێندرێنەوە</td></tr>':(staffList.length?staffList.map(p=>'<tr><td>'+safeText(p.full_name||'بێ ناو')+'</td><td>'+safeText(p.role)+'</td><td>'+(p.active?'<span class="tag">چالاک</span>':'ناچالاک')+'</td></tr>').join(''):'<tr><td colspan="3">هیچ کارمەندێک نییە</td></tr>');
+    if(staffRows) staffRows.innerHTML=staffError?'<tr><td colspan="4">نەتوانرا کارمەندان بخوێندرێنەوە</td></tr>':(staffList.length?staffList.map(p=>'<tr><td>'+safeText(p.full_name||'بێ ناو')+'</td><td>'+safeText(p.role)+'</td><td><span class="tag">چالاک</span></td><td><button type="button" class="btn secondary block-staff" data-staff-id="'+safeText(p.id)+'" data-staff-name="'+safeText(p.full_name||'کارمەند')+'">قەدەغەکردنی هەژمار</button></td></tr>').join(''):'<tr><td colspan="4">هیچ کارمەندێکی چالاک نییە</td></tr>');
     document.getElementById('statStaff').textContent=staffError?'—':staffList.length.toLocaleString('en-US');
      await loadStaffDeductionBalances();
      await loadEmployeeAccountList();
@@ -356,15 +356,24 @@ async function refreshSession(){
       document.getElementById('goAddProduct').hidden = false;
       return;
     }
+    if(profile.active === false && profile.role!=='owner'){
+      currentProfile = null;
+      await supabase.auth.signOut({scope:'local'});
+      document.body.classList.remove('staff-view');
+      authPanel.hidden = false;
+      statusEl.textContent='● هەژمارەکە ناچالاکە';
+      statusEl.style.background='#fff3cd'; statusEl.style.color='#8a6500';
+      logoutBtn.style.display='none';
+      message('ئەم هەژمارە ناچالاکە و ناتوانێت بچێتە ژوورەوە. تکایە پەیوەندی بە خاوەنی سیستەمەوە بکە.');
+      return;
+    }
     currentProfile = profile;
     document.body.classList.toggle('staff-view',profile.role!=='owner');
-    // Keep the action visible for diagnosis; database RLS and the submit guard still restrict writes to the owner.
     document.getElementById('openAddStock').hidden = false;
     document.getElementById('goAddProduct').hidden = false;
     await loadDashboardData(profile.role);
     await syncOwnerOrderNotifications(profile.role);
-    if(profile.active === false){ message('ئەم هەژمارە ناچالاکە. تکایە پەیوەندی بە خاوەنی سیستەمەوە بکە.'); }
-    else { authPanel.querySelector('h3').textContent='بەخێربێیت، '+(profile.full_name || 'بەکارهێنەر'); }
+    authPanel.querySelector('h3').textContent='بەخێربێیت، '+(profile.full_name || 'بەکارهێنەر');
   } else {
     document.body.classList.remove('staff-view');
     await syncOwnerOrderNotifications(null);
@@ -564,6 +573,22 @@ async function handleOrderAction(event){
   await loadDashboardData(currentProfile.role);
   await loadStaffDeductionBalances();
 }
+document.getElementById('staffRows').addEventListener('click',async(event)=>{
+  const btn=event.target.closest('.block-staff');
+  if(!btn) return;
+  if(currentProfile?.role!=='owner'){toast('تەنها خاوەن دەتوانێت هەژماری کارمەند قەدەغە بکات');return;}
+  const staffId=btn.dataset.staffId;
+  const staffName=btn.dataset.staffName||'ئەم کارمەندە';
+  if(!confirm('دڵنیایت هەژماری «'+staffName+'» بۆ هەمیشە قەدەغە بکەیت؟ کارمەند ناتوانێت دووبارە بچێتە ژوورەوە، بەڵام مێژووی فرۆشتن و حیسابەکانی دەمێننەوە.')) return;
+  btn.disabled=true; btn.textContent='چاوەڕوان بە...';
+  const {data,error}=await supabase.functions.invoke('block-staff',{body:{staff_id:staffId}});
+  if(error||!data?.success){
+    toast('نەتوانرا هەژمارەکە قەدەغە بکرێت: '+(data?.error||error?.message||'هەڵەیەکی نەناسراو'));
+    btn.disabled=false; btn.textContent='قەدەغەکردنی هەژمار'; return;
+  }
+  toast('هەژماری '+staffName+' قەدەغە کرا؛ مێژووی حیسابەکە پارێزرا');
+  await loadDashboardData('owner');
+});
 document.getElementById('ordersRows').addEventListener('click',handleOrderAction);
 document.getElementById('recordedOrdersRows').addEventListener('click',handleOrderAction);
 
