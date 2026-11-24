@@ -76,8 +76,8 @@ Deno.serve(async (req: Request) => {
     if (targetError || !target) {
       return respond(404, { error: "Staff account was not found." });
     }
-    if (target.role === "owner") {
-      return respond(403, { error: "An owner account cannot be blocked as staff." });
+    if (target.role !== "admin") {
+      return respond(403, { error: "Only admin accounts can be blocked with this action." });
     }
     if (target.active === false) {
       return respond(200, { success: true, message: "This account is already inactive." });
