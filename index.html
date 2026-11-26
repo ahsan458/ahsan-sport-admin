@@ -135,7 +135,7 @@ body.staff-view [data-owner-only] { display: none !important; }
 
   <section class="page" id="sales">
     <div class="section-head"><h2>فرۆشتن و داواکاری</h2><button class="btn" id="openSaleForm">+ تۆمارکردنی فرۆشتن</button></div>
-    <div class="white-card"><h3>تۆمارکردنی فرۆشتنی نوێ</h3><p class="note">کارمەند زانیاریی کڕیار و کاڵای فرۆشراو تۆمار دەکات. قازانجی کارمەند خانەیەکی کراوەیە و خۆی بڕەکەی دەنووسێت.</p></div>
+    <div class="white-card"><h3 id="saleFormTitle">تۆمارکردنی فرۆشتنی نوێ</h3><p class="note">کارمەند زانیاریی کڕیار و کاڵای فرۆشراو تۆمار دەکات. قازانجی کارمەند خانەیەکی کراوەیە و خۆی بڕەکەی دەنووسێت.</p></div>
     <div class="white-card" id="saleFormPanel" hidden>
       <form id="saleForm">
         <h3>زانیاریی کڕیار</h3>
@@ -252,6 +252,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true }
 });
 let currentProfile = null;
+let currentUserId = null;
+let cachedOrders = [];
 let cachedProducts = [];
 let cachedVariants = [];
 let ownerOrdersChannel = null;
@@ -263,8 +265,8 @@ async function syncOwnerOrderNotifications(role){
   if(role !== 'owner') return;
   ownerOrdersChannel = supabase
     .channel('ahsan-owner-new-orders')
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'orders'},async(payload)=>{
-      toast('🔔 فرۆشتنی نوێ تۆمار کرا');
+    .on('postgres_changes',{event:'*',schema:'public',table:'orders'},async(payload)=>{
+      toast(payload.eventType==='UPDATE'?'✏️ تۆمارێک دەستکاری کرا':'🔔 فرۆشتنی نوێ تۆمار کرا');
       try{ await loadDashboardData('owner'); }catch(error){ console.error('Refresh after new order failed',error); }
     })
     .subscribe();
@@ -284,11 +286,12 @@ async function loadDashboardData(role){
   const [productsResult,variantsResult,ordersResult]=await Promise.all([
     supabase.from('products').select('id,model,price_iqd,active').eq('active',true).order('created_at',{ascending:false}).limit(100),
     supabase.from('inventory_variants').select('id,product_id,color,size,quantity').order('size').limit(200),
-    supabase.from('orders').select('id,staff_id,customer_name,customer_phone,delivery_address,model,color,size,quantity,shoe_image_path,sale_price_iqd,delivery_fee_iqd,employee_profit_iqd,status,viewed_at,receipt_recorded_at,created_at').order('created_at',{ascending:false}).limit(100)
+    supabase.from('orders').select('id,staff_id,customer_name,customer_phone,delivery_address,model,color,size,quantity,shoe_image_path,sale_price_iqd,delivery_fee_iqd,employee_profit_iqd,notes,status,viewed_at,receipt_recorded_at,created_at').order('created_at',{ascending:false}).limit(100)
   ]);
   cachedProducts = productsResult.data || [];
   cachedVariants = variantsResult.data || [];
   const orderData=ordersResult.data||[];
+  cachedOrders=orderData;
   // Cancelled/rejected orders stay in history but are excluded from sales and order totals for both owner and staff.
   const activeOrders=orderData.filter(o=>o.status!=='cancelled');
   const fmt=n=>Number(n||0).toLocaleString('en-US')+' د.ع';
@@ -319,7 +322,16 @@ async function loadDashboardData(role){
     const ids=[...new Set(orderData.map(o=>o.staff_id).filter(Boolean))];
     if(ids.length){const {data:staffProfiles}=await supabase.from('profiles').select('id,full_name').in('id',ids);(staffProfiles||[]).forEach(p=>staffNames.set(p.id,p.full_name||'کارمەند'));}
   }
-  const renderOrderRows=(rows,recorded=false)=>rows.length?rows.map(o=>{const photo=o.shoe_image_path?supabase.storage.from('shoe-order-photos').getPublicUrl(o.shoe_image_path).data.publicUrl:'';const total=Number(o.sale_price_iqd||0)*Number(o.quantity||1)+Number(o.delivery_fee_iqd||0);const statusLabel=o.status==='cancelled'?'ڕەتکراوە':o.status==='awaiting_delivery'?'چاوەڕوانی گەیاندن':o.status;const viewLabel=o.viewed_at?'<span class="tag">سەیرکراو</span>':'<span class="tag" style="background:#fff3cd;color:#8a6500">هێشتا سەیرنەکراوە</span>';const actions=isOwner?(o.viewed_at?'': '<br><button class="btn secondary view-order" data-order-id="'+safeText(o.id)+'">سەیرکردنی داواکاری</button>')+(isOwner&&!recorded&&o.status!=='cancelled'?'<br><button class="btn green record-receipt" data-order-id="'+safeText(o.id)+'">تۆمارکردنی وەسڵ</button>':'')+(isOwner&&!recorded&&o.status==='awaiting_delivery'?'<br><button class="btn secondary reject-order" data-order-id="'+safeText(o.id)+'" data-order-total="'+total+'">ڕەتکردنەوە</button>':''):'';return '<tr'+(o.status==='cancelled'?' style="opacity:.72"':'')+'><td>'+(photo?'<img src="'+safeText(photo)+'" alt="وێنەی پێڵاو" style="width:64px;height:64px;object-fit:cover;border-radius:8px;display:block;margin-bottom:6px">':'')+safeText(o.customer_name)+'<br><small>'+safeText(o.model||'')+' · '+safeText(o.color||'')+' · '+safeText(o.size||'')+' · '+Number(o.quantity||1)+' دانە</small>'+(isOwner?'<br><small>کارمەند: '+safeText(staffNames.get(o.staff_id)||'ناسراو نییە')+'</small>':'')+'</td><td>'+safeText(o.customer_phone)+'<br><small>'+safeText(o.delivery_address||'')+'</small></td><td>'+fmt(Number(o.sale_price_iqd||0)*Number(o.quantity||1))+'</td><td>'+fmt(Number(o.employee_profit_iqd||0)*Number(o.quantity||1))+'</td><td>'+fmt(o.delivery_fee_iqd)+'</td><td>'+safeText(statusLabel)+'<br>'+viewLabel+(recorded?'<br><span class="tag">تۆمارکراو</span>':'')+'</td><td>'+new Date(o.created_at).toLocaleDateString()+actions+'</td></tr>';}).join(''):'<tr><td colspan="7">هیچ داواکارییەک نییە</td></tr>';
+  const renderOrderRows=(rows,recorded=false)=>rows.length?rows.map(o=>{
+    const photo=o.shoe_image_path?supabase.storage.from('shoe-order-photos').getPublicUrl(o.shoe_image_path).data.publicUrl:'';
+    const total=Number(o.sale_price_iqd||0)*Number(o.quantity||1)+Number(o.delivery_fee_iqd||0);
+    const statusLabel=o.status==='cancelled'?'ڕەتکراوە':o.status==='awaiting_delivery'?'چاوەڕوانی گەیاندن':o.status;
+    const viewLabel=o.viewed_at?'<span class="tag">سەیرکراو</span>':'<span class="tag" style="background:#fff3cd;color:#8a6500">هێشتا سەیرنەکراوە</span>';
+    const ownerActions=isOwner?(o.viewed_at?'': '<br><button class="btn secondary view-order" data-order-id="'+safeText(o.id)+'">سەیرکردنی داواکاری</button>')+(!recorded&&o.status!=='cancelled'?'<br><button class="btn green record-receipt" data-order-id="'+safeText(o.id)+'">تۆمارکردنی وەسڵ</button>':'')+(!recorded&&o.status==='awaiting_delivery'?'<br><button class="btn secondary reject-order" data-order-id="'+safeText(o.id)+'" data-order-total="'+total+'">ڕەتکردنەوە</button>':''):'';
+    const staffEditAction=!isOwner&&currentUserId&&o.staff_id===currentUserId?'<br><button class="btn secondary edit-order" data-order-id="'+safeText(o.id)+'">✏️ دەستکاری</button>':'';
+    const actions=ownerActions+staffEditAction;
+    return '<tr'+(o.status==='cancelled'?' style="opacity:.72"':'')+'><td>'+(photo?'<img src="'+safeText(photo)+'" alt="وێنەی پێڵاو" style="width:64px;height:64px;object-fit:cover;border-radius:8px;display:block;margin-bottom:6px">':'')+safeText(o.customer_name)+'<br><small>'+safeText(o.model||'')+' · '+safeText(o.color||'')+' · '+safeText(o.size||'')+' · '+Number(o.quantity||1)+' دانە</small>'+(isOwner?'<br><small>کارمەند: '+safeText(staffNames.get(o.staff_id)||'ناسراو نییە')+'</small>':'')+'</td><td>'+safeText(o.customer_phone)+'<br><small>'+safeText(o.delivery_address||'')+'</small></td><td>'+fmt(Number(o.sale_price_iqd||0)*Number(o.quantity||1))+'</td><td>'+fmt(Number(o.employee_profit_iqd||0)*Number(o.quantity||1))+'</td><td>'+fmt(o.delivery_fee_iqd)+'</td><td>'+safeText(statusLabel)+'<br>'+viewLabel+(recorded?'<br><span class="tag">تۆمارکراو</span>':'')+'</td><td>'+new Date(o.created_at).toLocaleDateString()+actions+'</td></tr>';
+  }).join(''):'<tr><td colspan="7">هیچ داواکارییەک نییە</td></tr>';
   const newOrders=orderData.filter(o=>!o.receipt_recorded_at);
   const recordedOrders=orderData.filter(o=>!!o.receipt_recorded_at);
   if(orderRows) orderRows.innerHTML=ordersResult.error?'<tr><td colspan="7">نەتوانرا داواکارییەکان بخوێندرێنەوە</td></tr>':renderOrderRows(newOrders);
@@ -344,6 +356,7 @@ async function refreshSession(){
     authPanel.querySelector('h3').textContent='بەخێربێیت بۆ AHSAN SPORT';
     message('هەژمارەکەت بە سەرکەوتوویی پەیوەست بوو. بەشەکانی داشبۆرد هێشتا پێویستیان بە پەیوەستکردنی داتا هەیە.', true);
     logoutBtn.style.display='inline-block';
+    currentUserId=session.user.id;
     const { data: profile, error: profileError } = await supabase.from('profiles').select('full_name, role, active').eq('id',session.user.id).maybeSingle();
     if(profileError){
       currentProfile = null;
@@ -381,6 +394,8 @@ async function refreshSession(){
     await syncOwnerOrderNotifications(profile.role);
     authPanel.querySelector('h3').textContent='بەخێربێیت، '+(profile.full_name || 'بەکارهێنەر');
   } else {
+    currentUserId=null;
+    cachedOrders=[];
     document.body.classList.remove('staff-view');
     await syncOwnerOrderNotifications(null);
     currentProfile = null;
@@ -506,50 +521,118 @@ document.getElementById('expenseForm').addEventListener('submit',async event=>{
 });
 
 const salePanel=document.getElementById('saleFormPanel');
-document.getElementById('openSaleForm').addEventListener('click',()=>{salePanel.hidden=!salePanel.hidden;});
-document.getElementById('cancelSaleBtn').addEventListener('click',()=>{salePanel.hidden=true;});
-document.getElementById('saleForm').addEventListener('submit',async(event)=>{
+const saleForm=document.getElementById('saleForm');
+const salePhotoInput=document.getElementById('salePhoto');
+const saleFormTitle=document.getElementById('saleFormTitle');
+const saveSaleBtn=document.getElementById('saveSaleBtn');
+let editingOrderId=null;
+document.getElementById('openSaleForm').addEventListener('click',()=>{if(editingOrderId) resetSaleEditor();else salePanel.hidden=!salePanel.hidden;});
+function resetSaleEditor(){
+  editingOrderId=null;
+  saleForm.reset();
+  salePhotoInput.required=true;
+  saleFormTitle.textContent='تۆمارکردنی فرۆشتنی نوێ';
+  saveSaleBtn.textContent='ناردنی فرۆشتن';
+  document.getElementById('saleMessage').textContent='';
+  salePanel.hidden=true;
+}
+document.getElementById('cancelSaleBtn').addEventListener('click',resetSaleEditor);
+function beginEditOrder(orderId){
+  const order=cachedOrders.find(item=>item.id===orderId);
+  if(!order||!currentUserId||order.staff_id!==currentUserId||currentProfile?.active!==true||currentProfile?.role==='owner'){
+    toast('تەنها دەتوانیت ئەو تۆمارە دەستکاری بکەیت کە خۆت دروستت کردووە');return;
+  }
+  editingOrderId=order.id;
+  document.getElementById('saleCustomer').value=order.customer_name||'';
+  document.getElementById('salePhone').value=order.customer_phone||'';
+  document.getElementById('saleAddress').value=order.delivery_address||'';
+  document.getElementById('saleModel').value=order.model||'';
+  document.getElementById('saleColor').value=order.color||'';
+  document.getElementById('saleSize').value=order.size??'';
+  document.getElementById('saleQuantity').value=order.quantity||1;
+  document.getElementById('salePrice').value=order.sale_price_iqd??0;
+  document.getElementById('saleDelivery').value=order.delivery_fee_iqd??0;
+  document.getElementById('saleProfit').value=order.employee_profit_iqd??0;
+  document.getElementById('saleNote').value=order.notes||'';
+  salePhotoInput.value='';
+  salePhotoInput.required=false;
+  saleFormTitle.textContent='دەستکاریکردنی تۆماری فرۆشتن';
+  saveSaleBtn.textContent='پاشەکەوتکردنی گۆڕانکاری';
+  document.getElementById('saleMessage').textContent='دەتوانیت زانیارییەکان بگۆڕیت. ئەگەر وێنە نەگۆڕیت، وێنەی پێشووتر دەمێنێتەوە.';
+  salePanel.hidden=false;
+  window.scrollTo({top:salePanel.getBoundingClientRect().top+window.scrollY-20,behavior:'smooth'});
+}
+saleForm.addEventListener('submit',async(event)=>{
   event.preventDefault();
-  const info=document.getElementById('saleMessage'),btn=document.getElementById('saveSaleBtn');
+  const info=document.getElementById('saleMessage'),btn=saveSaleBtn;
   if(!currentProfile||currentProfile.active!==true){info.textContent='هەژمارەکەت چالاک نییە یان پڕۆفایلەکەت نەدۆزرایەوە.';return;}
   const quantity=Number(document.getElementById('saleQuantity').value);
   const price=Number(document.getElementById('salePrice').value);
   const delivery=Number(document.getElementById('saleDelivery').value);
   const profit=Number(document.getElementById('saleProfit').value);
-  const photo=document.getElementById('salePhoto').files[0];
-  if(!document.getElementById('saleModel').value.trim()||!document.getElementById('saleColor').value.trim()||!document.getElementById('saleSize').value||!photo||!Number.isSafeInteger(quantity)||quantity<1||![price,delivery,profit].every(n=>Number.isSafeInteger(n)&&n>=0)){
-    info.textContent='تکایە وێنە و زانیارییەکانی پێڵاو و نرخەکان بە دروستی پڕ بکەرەوە.';return;
+  const photo=salePhotoInput.files[0];
+  const model=document.getElementById('saleModel').value.trim();
+  const color=document.getElementById('saleColor').value.trim();
+  const size=Number(document.getElementById('saleSize').value);
+  if(!model||!color||!size||!Number.isSafeInteger(quantity)||quantity<1||![price,delivery,profit].every(n=>Number.isSafeInteger(n)&&n>=0)){
+    info.textContent='تکایە زانیارییەکان و نرخەکان بە دروستی پڕ بکەرەوە.';return;
   }
-  if(!photo.type.startsWith('image/')||photo.size>5*1024*1024){info.textContent='تکایە وێنەیەک هەڵبژێرە کە لە 5MB کەمتر بێت.';return;}
-  btn.disabled=true;info.textContent='وێنە و زانیارییەکان دەنێردرێن...';
+  if(photo&&(!photo.type.startsWith('image/')||photo.size>5*1024*1024)){info.textContent='تکایە وێنەیەک هەڵبژێرە کە لە 5MB کەمتر بێت.';return;}
+  if(!editingOrderId&&!photo){info.textContent='تکایە وێنەی پێڵاو هەڵبژێرە.';return;}
+  btn.disabled=true;info.textContent=editingOrderId?'گۆڕانکارییەکان پاشەکەوت دەکرێن...':'وێنە و زانیارییەکان دەنێردرێن...';
   try{
     const {data:{user},error:userError}=await supabase.auth.getUser();
     if(userError||!user) throw new Error('تکایە دووبارە بچۆ ژوورەوە.');
-    const ext=(photo.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
-    const imagePath=user.id+'/'+Date.now()+'.'+ext;
-    const {error:uploadError}=await supabase.storage.from('shoe-order-photos').upload(imagePath,photo,{contentType:photo.type,upsert:false});
-    if(uploadError) throw uploadError;
+    let imagePath=null;
+    if(photo){
+      const ext=(photo.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
+      imagePath=user.id+'/'+Date.now()+'.'+ext;
+      const {error:uploadError}=await supabase.storage.from('shoe-order-photos').upload(imagePath,photo,{contentType:photo.type,upsert:false});
+      if(uploadError) throw uploadError;
+    }
+    if(editingOrderId){
+      const updateValues={
+        customer_name:document.getElementById('saleCustomer').value.trim(),
+        customer_phone:document.getElementById('salePhone').value.trim(),
+        delivery_address:document.getElementById('saleAddress').value.trim(),
+        model,color,size,quantity,
+        sale_price_iqd:price,
+        delivery_fee_iqd:delivery,
+        employee_profit_iqd:profit,
+        notes:document.getElementById('saleNote').value.trim()||null
+      };
+      if(imagePath) updateValues.shoe_image_path=imagePath;
+      const {data,error}=await supabase.from('orders').update(updateValues).eq('id',editingOrderId).eq('staff_id',user.id).select('id').maybeSingle();
+      if(error) throw error;
+      if(!data) throw new Error('دەستکاریکردن ڕەتکرایەوە؛ تەنها خاوەنی ئەم تۆمارە دەتوانێت دەستکاری بکات.');
+      info.textContent='گۆڕانکارییەکان بە سەرکەوتوویی پاشەکەوت کران.';
+      toast('تۆمارەکەت نوێ کرایەوە');
+      resetSaleEditor();
+      await loadDashboardData(currentProfile.role);
+      return;
+    }
     const {error}=await supabase.rpc('submit_sale',{
       p_customer_name:document.getElementById('saleCustomer').value.trim(),
       p_customer_phone:document.getElementById('salePhone').value.trim(),
       p_delivery_address:document.getElementById('saleAddress').value.trim(),
-      p_model:document.getElementById('saleModel').value.trim(),
-      p_color:document.getElementById('saleColor').value.trim(),
-      p_size:Number(document.getElementById('saleSize').value),
-      p_quantity:quantity,
-      p_sale_price_iqd:price,
-      p_delivery_fee_iqd:delivery,
-      p_employee_profit_iqd:profit,
-      p_shoe_image_path:imagePath,
+      p_model:model,p_color:color,p_size:size,p_quantity:quantity,
+      p_sale_price_iqd:price,p_delivery_fee_iqd:delivery,
+      p_employee_profit_iqd:profit,p_shoe_image_path:imagePath,
       p_notes:document.getElementById('saleNote').value.trim()||null
     });
     if(error) throw error;
     info.textContent='فرۆشتنەکە بە سەرکەوتوویی نێردرا.';
-    document.getElementById('saleForm').reset();
+    resetSaleEditor();
     toast('فرۆشتنەکە نێردرا بۆ خاوەن');
     await loadDashboardData(currentProfile.role);
-  }catch(error){info.textContent='هەڵە لە ناردنی فرۆشتن: '+(error.message||'هەڵەیەکی نەناسراو');}
+  }catch(error){info.textContent='هەڵە لە پاشەکەوتکردن: '+(error.message||'هەڵەیەکی نەناسراو');}
   finally{btn.disabled=false;}
+});
+document.getElementById('ordersRows').addEventListener('click',event=>{
+  const btn=event.target.closest('.edit-order');if(btn)beginEditOrder(btn.dataset.orderId);
+});
+document.getElementById('recordedOrdersRows').addEventListener('click',event=>{
+  const btn=event.target.closest('.edit-order');if(btn)beginEditOrder(btn.dataset.orderId);
 });
 
 async function handleOrderAction(event){
