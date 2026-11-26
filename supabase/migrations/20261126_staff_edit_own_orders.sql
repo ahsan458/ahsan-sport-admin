@@ -48,6 +48,9 @@ begin
     where p.id = auth.uid();
 
     if coalesce(v_role, '') <> 'owner' then
+      if old.staff_id is distinct from auth.uid() then
+        raise exception 'Staff may edit only their own orders';
+      end if;
       if new.id is distinct from old.id
         or new.staff_id is distinct from old.staff_id
         or new.status is distinct from old.status
